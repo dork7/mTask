@@ -48,4 +48,11 @@ describe('DownloadProgress', () => {
     );
     expect(screen.getByText(/downloading/i)).toBeInTheDocument();
   });
+
+  it('shows small files in KB rather than 0.0 MB', () => {
+    render(
+      <DownloadProgress progress={{ file: 'laya_config.json', index: 3, total: 5, loaded: 369, size: 369, source: 'cache' }} />,
+    );
+    expect(screen.getByText(/0\.4 KB of 0\.4 KB/)).toBeInTheDocument();
+  });
 });
