@@ -24,7 +24,7 @@ describe('App', () => {
 
   it('adding a task shows it pending, then classified once computePriority resolves', async () => {
     const { computePriority } = await import('./lib/priority');
-    let resolve!: (value: { label: string; score: number; confidence: number }) => void;
+    let resolve!: (value: Awaited<ReturnType<typeof computePriority>>) => void;
     vi.mocked(computePriority).mockReturnValue(new Promise((r) => (resolve = r)));
     const user = userEvent.setup();
     const App = (await import('./App')).default;
@@ -34,7 +34,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Add task' }));
 
     expect(screen.getByText('Classifying…')).toBeInTheDocument();
-    resolve({ label: 'high', score: 2.6, confidence: 0.9 });
+    resolve({ label: 'high', score: 2.6, confidence: 0.9, mode: 'levels' as const });
     expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
   });
 
@@ -42,7 +42,7 @@ describe('App', () => {
     const { computePriority } = await import('./lib/priority');
     vi.mocked(computePriority)
       .mockRejectedValueOnce(new Error('model unavailable'))
-      .mockResolvedValueOnce({ label: 'low', score: 0.2, confidence: 0.6 });
+      .mockResolvedValueOnce({ label: 'low', score: 0.2, confidence: 0.6, mode: 'levels' as const });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
@@ -59,7 +59,7 @@ describe('App', () => {
 
   it('toggling done and deleting a task both work', async () => {
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'low', score: 0, confidence: 0.5 });
+    vi.mocked(computePriority).mockResolvedValue({ label: 'low', score: 0, confidence: 0.5, mode: 'levels' as const });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
@@ -77,7 +77,7 @@ describe('App', () => {
 
   it('editing criteria does not change an already-classified task\'s displayed label', async () => {
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'high', score: 2, confidence: 0.9 });
+    vi.mocked(computePriority).mockResolvedValue({ label: 'high', score: 2, confidence: 0.9, mode: 'levels' as const });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
@@ -124,7 +124,7 @@ describe('App', () => {
       ]),
     );
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'urgent', score: 2, confidence: 0.7 });
+    vi.mocked(computePriority).mockResolvedValue({ label: 'urgent', score: 2, confidence: 0.7, mode: 'levels' as const });
     const App = (await import('./App')).default;
     render(<App />);
 
@@ -133,8 +133,53 @@ describe('App', () => {
     expect(computePriority).toHaveBeenCalledWith(
       'Interrupted task',
       'page was closed mid-download',
-      expect.any(Array),
+      expect.objectContaining({ mode: 'levels' }),
       expect.any(Function),
     );
+  });
+
+  it('in yes/no mode, classifies with the instructions alone and shows the answer', async () => {
+    const { computePriority } = await import('./lib/priority');
+    vi.mocked(computePriority).mockResolvedValue({ label: 'yes', score: 0.81, confidence: 0.81, mode: 'yesno' });
+    const user = userEvent.setup();
+    const App = (await import('./App')).default;
+    render(<App />);
+
+    await user.clear(screen.getByLabelText('Instructions'));
+    await user.type(screen.getByLabelText('Instructions'), 'Does this need doing today?');
+    await user.click(screen.getByRole('radio', { name: /yes\/no/i }));
+    await user.type(screen.getByLabelText('Title'), 'Pay rent');
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+
+    expect(await screen.findByText('Answer: yes (81% likely)')).toBeInTheDocument();
+    expect(computePriority).toHaveBeenCalledWith(
+      'Pay rent',
+      '',
+      expect.objectContaining({ instructions: 'Does this need doing today?', mode: 'yesno' }),
+      expect.any(Function),
+    );
+  });
+
+  it('remembers the instructions and mode across page loads', async () => {
+    localStorage.setItem('priorityQuestion', JSON.stringify({ instructions: 'Due today?', mode: 'yesno' }));
+    const App = (await import('./App')).default;
+    render(<App />);
+
+    expect(screen.getByLabelText('Instructions')).toHaveValue('Due today?');
+    expect(screen.getByRole('radio', { name: /yes\/no/i })).toBeChecked();
+  });
+
+  it('saves edited instructions', async () => {
+    const user = userEvent.setup();
+    const App = (await import('./App')).default;
+    render(<App />);
+
+    await user.clear(screen.getByLabelText('Instructions'));
+    await user.type(screen.getByLabelText('Instructions'), 'Is it blocking anyone?');
+
+    expect(JSON.parse(localStorage.getItem('priorityQuestion')!)).toEqual({
+      instructions: 'Is it blocking anyone?',
+      mode: 'levels',
+    });
   });
 });

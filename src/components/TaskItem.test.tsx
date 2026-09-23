@@ -71,4 +71,17 @@ describe('TaskItem', () => {
 
     expect(onDelete).toHaveBeenCalledWith('1');
   });
+
+  it('shows a yes/no answer with how likely it is', () => {
+    render(
+      <TaskItem
+        task={makeTask({ priority: { label: 'yes', score: 0.78, confidence: 0.78, status: 'done', mode: 'yesno' } })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Answer: yes (78% likely)')).toBeInTheDocument();
+    expect(screen.queryByText(/Priority:/)).not.toBeInTheDocument();
+  });
 });

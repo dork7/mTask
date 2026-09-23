@@ -19,11 +19,16 @@ export function TaskItem({ task, onToggleDone, onDelete, onRetry }: TaskItemProp
       <span style={{ textDecoration: task.done ? 'line-through' : 'none' }}>{task.title}</span>
       {task.description && <p>{task.description}</p>}
       {task.priority?.status === 'pending' && <span role="status">Classifying…</span>}
-      {task.priority?.status === 'done' && (
-        <span>
-          Priority: {task.priority.label} ({Math.round(task.priority.confidence * 100)}% confidence)
-        </span>
-      )}
+      {task.priority?.status === 'done' &&
+        (task.priority.mode === 'yesno' ? (
+          <span>
+            Answer: {task.priority.label} ({Math.round(task.priority.confidence * 100)}% likely)
+          </span>
+        ) : (
+          <span>
+            Priority: {task.priority.label} ({Math.round(task.priority.confidence * 100)}% confidence)
+          </span>
+        ))}
       {task.priority?.status === 'error' && (
         <span>
           Couldn&apos;t classify.
