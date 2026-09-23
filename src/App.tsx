@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createTask, loadTasks, saveTasks } from './storage/taskStore';
 import { loadCriteria, saveCriteria } from './storage/criteriaStore';
 import type { Task } from './storage/types';
@@ -17,10 +17,20 @@ function App() {
   // The ~1.7GB model can only be kept in Cache Storage (missing in old browsers / some private modes).
   const [canClassify] = useState(() => typeof caches !== 'undefined');
 
+  const resumed = useRef(false);
+
   useEffect(() => {
-    setTasks(loadTasks());
-    setCriteria(loadCriteria());
+    const stored = loadTasks();
+    const levels = loadCriteria();
+    setTasks(stored);
+    setCriteria(levels);
     setLoaded(true);
+    // A task still 'pending' was interrupted (page closed or reloaded mid-classification);
+    // restart it. The ref keeps StrictMode's double effect run from classifying twice.
+    if (canClassify && !resumed.current) {
+      resumed.current = true;
+      stored.filter((t) => t.priority?.status === 'pending').forEach((t) => void runClassification(t, levels));
+    }
   }, []);
 
   const updateTasksState = (updater: (prev: Task[]) => Task[]) => {

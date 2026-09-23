@@ -108,4 +108,33 @@ describe('App', () => {
     expect(screen.queryByText('Classifying…')).not.toBeInTheDocument();
     expect(computePriority).not.toHaveBeenCalled();
   });
+
+  it('resumes classifying tasks left pending by a previous page load', async () => {
+    localStorage.setItem(
+      'tasks',
+      JSON.stringify([
+        {
+          id: 'old',
+          title: 'Interrupted task',
+          description: 'page was closed mid-download',
+          createdAt: '2026-09-23T00:00:00.000Z',
+          done: false,
+          priority: { label: '', score: 0, confidence: 0, status: 'pending' },
+        },
+      ]),
+    );
+    const { computePriority } = await import('./lib/priority');
+    vi.mocked(computePriority).mockResolvedValue({ label: 'urgent', score: 2, confidence: 0.7 });
+    const App = (await import('./App')).default;
+    render(<App />);
+
+    expect(await screen.findByText(/Priority: urgent/)).toBeInTheDocument();
+    expect(computePriority).toHaveBeenCalledTimes(1);
+    expect(computePriority).toHaveBeenCalledWith(
+      'Interrupted task',
+      'page was closed mid-download',
+      expect.any(Array),
+      expect.any(Function),
+    );
+  });
 });
