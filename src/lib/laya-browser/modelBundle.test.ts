@@ -1,42 +1,72 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const REPO_BASE = 'https://huggingface.co/receptron/laya-onnx/resolve/main';
+const CONFIG = { max_len: 64, head_max_len: 32, temperature: [1, 1, 1], temperature_by_options: {} };
 
 function jsonBuffer(value: unknown): ArrayBuffer {
   return new TextEncoder().encode(JSON.stringify(value)).buffer as ArrayBuffer;
 }
 
+function streamResponse(bytes: number[], chunkSize = 3) {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-length': String(bytes.length) }),
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          controller.enqueue(new Uint8Array(bytes.slice(i, i + chunkSize)));
+        }
+        controller.close();
+      },
+    }),
+  };
+}
+
+/** Map-backed stand-in for a Cache Storage cache. */
+function fakeCache() {
+  const entries = new Map<string, ArrayBuffer>();
+  return {
+    entries,
+    match: vi.fn(async (url: string) => {
+      const buf = entries.get(url);
+      return buf ? new Response(buf.slice(0)) : undefined;
+    }),
+    put: vi.fn(async (url: string, response: Response) => {
+      entries.set(url, await response.arrayBuffer());
+    }),
+  };
+}
+
 describe('ensureBundle', () => {
-  let cachePut: ReturnType<typeof vi.fn>;
-  let cacheMatch: ReturnType<typeof vi.fn>;
+  let cache: ReturnType<typeof fakeCache>;
+  let cacheDelete: ReturnType<typeof vi.fn>;
   let fetchMock: ReturnType<typeof vi.fn>;
+  const bodies: Record<string, ArrayBuffer> = {
+    'laya.onnx': new ArrayBuffer(4),
+    'laya.onnx.data': new ArrayBuffer(8),
+    'laya_config.json': jsonBuffer(CONFIG),
+    'tokenizer/tokenizer.json': jsonBuffer({ fake: 'tokenizer' }),
+    'tokenizer/tokenizer_config.json': jsonBuffer({ fake: 'config' }),
+  };
 
   beforeEach(() => {
-    cachePut = vi.fn().mockResolvedValue(undefined);
-    cacheMatch = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('caches', {
-      open: vi.fn().mockResolvedValue({ match: cacheMatch, put: cachePut }),
-    });
-    fetchMock = vi.fn().mockImplementation((url: string) => {
-      const file = url.replace(`${REPO_BASE}/`, '');
-      const bodies: Record<string, ArrayBuffer> = {
-        'laya.onnx': new ArrayBuffer(4),
-        'laya.onnx.data': new ArrayBuffer(8),
-        'laya_config.json': jsonBuffer({ max_len: 64, head_max_len: 32, temperature: [1, 1, 1], temperature_by_options: {} }),
-        'tokenizer/tokenizer.json': jsonBuffer({ fake: 'tokenizer' }),
-        'tokenizer/tokenizer_config.json': jsonBuffer({ fake: 'config' }),
-      };
-      return Promise.resolve({
+    cache = fakeCache();
+    cacheDelete = vi.fn().mockResolvedValue(true);
+    vi.stubGlobal('caches', { open: vi.fn().mockResolvedValue(cache), delete: cacheDelete });
+    fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({
         ok: true,
         status: 200,
-        arrayBuffer: () => Promise.resolve(bodies[file]),
-      });
-    });
+        arrayBuffer: () => Promise.resolve(bodies[url.replace(`${REPO_BASE}/`, '')].slice(0)),
+      }),
+    );
     vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('fetches all 5 bundle files from the Hugging Face repo and parses the JSON ones', async () => {
@@ -44,19 +74,17 @@ describe('ensureBundle', () => {
 
     const bundle = await ensureBundle();
 
-    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/laya.onnx`);
-    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/laya.onnx.data`);
-    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/laya_config.json`);
-    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/tokenizer/tokenizer.json`);
-    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/tokenizer/tokenizer_config.json`);
+    for (const file of Object.keys(bodies)) {
+      expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/${file}`);
+    }
     expect(bundle.onnx.byteLength).toBe(4);
     expect(bundle.onnxData.byteLength).toBe(8);
-    expect(bundle.config).toEqual({ max_len: 64, head_max_len: 32, temperature: [1, 1, 1], temperature_by_options: {} });
+    expect(bundle.config).toEqual(CONFIG);
     expect(bundle.tokenizerJson).toEqual({ fake: 'tokenizer' });
     expect(bundle.tokenizerConfigJson).toEqual({ fake: 'config' });
   });
 
-  it('reports progress once per file, in order, with an increasing index', async () => {
+  it('reports progress for each file, in order, with an increasing index', async () => {
     const { ensureBundle } = await import('./modelBundle');
     const onProgress = vi.fn();
 
@@ -70,24 +98,6 @@ describe('ensureBundle', () => {
     );
   });
 
-  it('serves a file from Cache Storage instead of fetching when already cached', async () => {
-    cacheMatch.mockImplementation((url: string) =>
-      url.endsWith('laya_config.json')
-        ? Promise.resolve({
-            arrayBuffer: () =>
-              Promise.resolve(
-                jsonBuffer({ max_len: 1, head_max_len: 1, temperature: [1, 1, 1], temperature_by_options: {} }),
-              ),
-          })
-        : Promise.resolve(undefined),
-    );
-    const { ensureBundle } = await import('./modelBundle');
-
-    await ensureBundle();
-
-    expect(fetchMock).not.toHaveBeenCalledWith(`${REPO_BASE}/laya_config.json`);
-  });
-
   it('throws when a file fails to download', async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 404, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
     const { ensureBundle } = await import('./modelBundle');
@@ -96,20 +106,7 @@ describe('ensureBundle', () => {
   });
 
   it('reports bytes received while streaming a file body, using content-length as the size', async () => {
-    const chunks = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5])];
-    fetchMock.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-length': '5' }),
-        body: new ReadableStream<Uint8Array>({
-          start(controller) {
-            chunks.forEach((c) => controller.enqueue(c));
-            controller.close();
-          },
-        }),
-      }),
-    );
+    fetchMock.mockImplementationOnce(() => Promise.resolve(streamResponse([1, 2, 3, 4, 5])));
     const { ensureBundle } = await import('./modelBundle');
     const onProgress = vi.fn();
 
@@ -118,6 +115,57 @@ describe('ensureBundle', () => {
     expect(Array.from(new Uint8Array(bundle.onnx))).toEqual([1, 2, 3, 4, 5]);
     expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 3, size: 5, source: 'network' });
     expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 5, size: 5, source: 'network' });
+  });
+
+  it('caches large files in parts no bigger than partBytes, and a second load reads them back without fetching', async () => {
+    const data = Array.from({ length: 10 }, (_, i) => i + 1);
+    fetchMock.mockImplementation((url: string) =>
+      url.endsWith('laya.onnx.data')
+        ? Promise.resolve(streamResponse(data))
+        : Promise.resolve({ ok: true, status: 200, arrayBuffer: () => Promise.resolve(bodies[url.replace(`${REPO_BASE}/`, '')].slice(0)) }),
+    );
+    const { ensureBundle } = await import('./modelBundle');
+
+    await ensureBundle(undefined, { partBytes: 4 });
+
+    const dataParts = [...cache.entries.entries()].filter(([k]) => k.startsWith(`${REPO_BASE}/laya.onnx.data?part=`));
+    expect(dataParts.map(([, v]) => v.byteLength)).toEqual([4, 4, 2]);
+
+    fetchMock.mockClear();
+    const onProgress = vi.fn();
+    const again = await ensureBundle(onProgress, { partBytes: 4 });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(Array.from(new Uint8Array(again.onnxData))).toEqual(data);
+    expect(again.config).toEqual(CONFIG);
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ file: 'laya.onnx.data', source: 'cache' }));
+  });
+
+  it('still returns the model when a cache write fails, and downloads that file again next time', async () => {
+    const put = cache.put.getMockImplementation()!;
+    cache.put.mockImplementation(async (url: string, response: Response) => {
+      if (url.includes('laya.onnx.data')) throw new DOMException('Unexpected internal error.', 'UnknownError');
+      return put(url, response);
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { ensureBundle } = await import('./modelBundle');
+
+    const bundle = await ensureBundle();
+    expect(bundle.onnxData.byteLength).toBe(8);
+    expect(warn).toHaveBeenCalled();
+
+    fetchMock.mockClear();
+    await ensureBundle();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(`${REPO_BASE}/laya.onnx.data`);
+  });
+
+  it('removes the old single-entry cache from earlier versions', async () => {
+    const { ensureBundle } = await import('./modelBundle');
+
+    await ensureBundle();
+
+    expect(cacheDelete).toHaveBeenCalledWith('laya-model-v1');
   });
 
   it('asks the browser to persist storage so the cached model is less likely to be evicted', async () => {
@@ -135,56 +183,5 @@ describe('ensureBundle', () => {
     const { ensureBundle } = await import('./modelBundle');
 
     await expect(ensureBundle()).resolves.toBeDefined();
-  });
-
-  it('streams a downloaded file into Cache Storage under its URL', async () => {
-    fetchMock.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-length': '3' }),
-        body: new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(new Uint8Array([7, 8, 9]));
-            controller.close();
-          },
-        }),
-      }),
-    );
-    const { ensureBundle } = await import('./modelBundle');
-
-    await ensureBundle();
-
-    const [url, stored] = cachePut.mock.calls.find(([u]) => u === `${REPO_BASE}/laya.onnx`)!;
-    expect(url).toBe(`${REPO_BASE}/laya.onnx`);
-    expect(Array.from(new Uint8Array(await (stored as Response).arrayBuffer()))).toEqual([7, 8, 9]);
-  });
-
-  it('still returns the model when writing it to Cache Storage fails', async () => {
-    cachePut.mockRejectedValue(new DOMException('quota exceeded', 'QuotaExceededError'));
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { ensureBundle } = await import('./modelBundle');
-
-    const bundle = await ensureBundle();
-
-    expect(bundle.onnxData.byteLength).toBe(8);
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
-  });
-
-  it('reports whether each file came from the cache or the network', async () => {
-    cacheMatch.mockImplementation((url: string) =>
-      url.endsWith('laya.onnx.data')
-        ? Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })
-        : Promise.resolve(undefined),
-    );
-    const { ensureBundle } = await import('./modelBundle');
-    const onProgress = vi.fn();
-
-    await ensureBundle(onProgress);
-
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ file: 'laya.onnx.data', source: 'cache' }));
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ file: 'laya.onnx', source: 'network' }));
-    expect(fetchMock).not.toHaveBeenCalledWith(`${REPO_BASE}/laya.onnx.data`);
   });
 });
