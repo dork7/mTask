@@ -1,6 +1,14 @@
 const STORAGE_KEY = 'priorityCriteria';
 
-export const DEFAULT_CRITERIA: string[] = ['low', 'medium', 'high', 'critical'];
+export const DEFAULT_CRITERIA: string[] = [
+  'not urgent',
+  'somewhat urgent',
+  'urgent',
+  'critical',
+  'ignore',
+  'immediate action required',
+  'nothing required',
+];
 
 export function loadCriteria(): string[] {
   const raw = localStorage.getItem(STORAGE_KEY);

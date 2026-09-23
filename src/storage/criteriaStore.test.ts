@@ -26,4 +26,17 @@ describe('criteriaStore', () => {
     const { saveCriteria } = await import('./criteriaStore');
     expect(() => saveCriteria(['only-one'])).toThrow('criteria must have at least 2 levels');
   });
+
+  it('defaults to the task urgency levels', async () => {
+    const { DEFAULT_CRITERIA } = await import('./criteriaStore');
+    expect(DEFAULT_CRITERIA).toEqual([
+      'not urgent',
+      'somewhat urgent',
+      'urgent',
+      'critical',
+      'ignore',
+      'immediate action required',
+      'nothing required',
+    ]);
+  });
 });

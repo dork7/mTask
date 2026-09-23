@@ -1,6 +1,7 @@
 import { classify } from './laya-browser/model';
 import type { ProgressInfo } from './laya-browser/modelBundle';
 
+const QUESTION_ID = 'task urgency';
 const INSTRUCTIONS = 'How urgent is this task?';
 
 export async function computePriority(
@@ -11,10 +12,13 @@ export async function computePriority(
 ): Promise<{ label: string; score: number; confidence: number }> {
   const result = await classify(
     { title, description },
-    { urgency: { type: 'score', instructions: INSTRUCTIONS, criteria } },
+    { [QUESTION_ID]: { type: 'score', instructions: INSTRUCTIONS, criteria } },
     onProgress,
   );
-  const answer = result.answers.urgency;
-  const index = Math.min(criteria.length - 1, Math.max(0, Math.round(answer.score)));
-  return { label: criteria[index], score: answer.score, confidence: answer.confidence };
+  const answer = result.answers[QUESTION_ID];
+  // Use the most probable level: the criteria need not be an ordered scale, so the
+  // probability-weighted mean index (answer.score) can land on a level nothing supports.
+  const probs = criteria.map((_, i) => answer.probabilities[String(i)] ?? 0);
+  const best = probs.indexOf(Math.max(...probs));
+  return { label: criteria[best], score: answer.score, confidence: answer.confidence };
 }
