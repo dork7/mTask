@@ -11,15 +11,16 @@ function formatBytes(bytes: number): string {
 
 export function DownloadProgress({ progress }: DownloadProgressProps) {
   if (!progress) return null;
-  const { file, index, total, loaded, size } = progress;
+  const { file, index, total, loaded, size, source } = progress;
+  const action = source === 'cache' ? 'Loading priority model from cache' : 'Downloading priority model';
   const bytes =
     size !== null
       ? `${formatBytes(loaded)} of ${formatBytes(size)} (${Math.round((loaded / size) * 100)}%)`
       : `${formatBytes(loaded)} received`;
   return (
-    <div className="download" role="status" aria-label="Downloading priority model">
+    <div className="download" role="status" aria-label={action}>
       <p>
-        Loading priority model — {file}, {index} of {total} files
+        {action} — {file}, {index} of {total} files
       </p>
       <p>{bytes}</p>
       {size !== null ? <progress value={loaded} max={size} /> : <progress />}

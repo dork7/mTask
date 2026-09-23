@@ -116,8 +116,8 @@ describe('ensureBundle', () => {
     const bundle = await ensureBundle(onProgress);
 
     expect(Array.from(new Uint8Array(bundle.onnx))).toEqual([1, 2, 3, 4, 5]);
-    expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 3, size: 5 });
-    expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 5, size: 5 });
+    expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 3, size: 5, source: 'network' });
+    expect(onProgress).toHaveBeenCalledWith({ file: 'laya.onnx', index: 1, total: 5, loaded: 5, size: 5, source: 'network' });
   });
 
   it('asks the browser to persist storage so the cached model is less likely to be evicted', async () => {
@@ -135,5 +135,56 @@ describe('ensureBundle', () => {
     const { ensureBundle } = await import('./modelBundle');
 
     await expect(ensureBundle()).resolves.toBeDefined();
+  });
+
+  it('streams a downloaded file into Cache Storage under its URL', async () => {
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-length': '3' }),
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([7, 8, 9]));
+            controller.close();
+          },
+        }),
+      }),
+    );
+    const { ensureBundle } = await import('./modelBundle');
+
+    await ensureBundle();
+
+    const [url, stored] = cachePut.mock.calls.find(([u]) => u === `${REPO_BASE}/laya.onnx`)!;
+    expect(url).toBe(`${REPO_BASE}/laya.onnx`);
+    expect(Array.from(new Uint8Array(await (stored as Response).arrayBuffer()))).toEqual([7, 8, 9]);
+  });
+
+  it('still returns the model when writing it to Cache Storage fails', async () => {
+    cachePut.mockRejectedValue(new DOMException('quota exceeded', 'QuotaExceededError'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { ensureBundle } = await import('./modelBundle');
+
+    const bundle = await ensureBundle();
+
+    expect(bundle.onnxData.byteLength).toBe(8);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('reports whether each file came from the cache or the network', async () => {
+    cacheMatch.mockImplementation((url: string) =>
+      url.endsWith('laya.onnx.data')
+        ? Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })
+        : Promise.resolve(undefined),
+    );
+    const { ensureBundle } = await import('./modelBundle');
+    const onProgress = vi.fn();
+
+    await ensureBundle(onProgress);
+
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ file: 'laya.onnx.data', source: 'cache' }));
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ file: 'laya.onnx', source: 'network' }));
+    expect(fetchMock).not.toHaveBeenCalledWith(`${REPO_BASE}/laya.onnx.data`);
   });
 });
