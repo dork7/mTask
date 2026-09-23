@@ -64,7 +64,7 @@ export function CriteriaPanel({ criteria, question, onChange, onQuestionChange }
         </label>
       </fieldset>
       {question.mode === 'yesno' ? (
-        <p className="hint">Phrase the instructions as a yes/no question, e.g. “Does this need doing today?”</p>
+        <p className="hint">Phrase the instructions as a yes/no question, e.g. “Is this task urgent?” The model is sensitive to wording, so try a few.</p>
       ) : (
         <>
           <ul>
