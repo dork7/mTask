@@ -1,130 +1,105 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { QuestionSet } from '../storage/questionsStore';
 
 vi.mock('./laya-browser/model', () => ({
   classify: vi.fn(),
 }));
 
-const LEVELS = [
-  'not urgent',
-  'somewhat urgent',
-  'urgent',
-  'critical',
-  'ignore',
-  'immediate action required',
-  'nothing required',
-];
+const extra = { rl_agent: { act_probability: 0 } };
 
-function scoreAnswer(score: number, probabilities: Record<string, number>, confidence = 0.5) {
-  return {
-    model: 'laya-browser',
-    answers: {
-      'task urgency': { type: 'score', score, confidence, legend: {}, probabilities, rl_agent: { act_probability: 0 } },
-    },
-    usage: { input_tokens: 10, output_tokens: 0 },
-  } as never;
+const QUESTIONS: QuestionSet = {
+  requester: {
+    type: 'choice',
+    instructions: 'Who is this for?',
+    criteria: { manager: 'A manager', self: 'Personal' },
+  },
+  blocks: { type: 'noul', instructions: 'Is anyone blocked?' },
+  urgency: { type: 'score', instructions: 'How urgent?', criteria: ['low', 'medium', 'high', 'critical'] },
+};
+
+function response(answers: Record<string, unknown>) {
+  return { model: 'laya-browser', answers, usage: { input_tokens: 10, output_tokens: 0 } } as never;
 }
 
-function noulAnswer(noul: number) {
-  return {
-    model: 'laya-browser',
-    answers: { 'task urgency': { type: 'noul', noul, rl_agent: { act_probability: 0 } } },
-    usage: { input_tokens: 10, output_tokens: 0 },
-  } as never;
-}
+const ANSWERS = {
+  requester: { type: 'choice', choice: 'manager', probabilities: { manager: 0.8, self: 0.2 }, confidence: 0.7, ...extra },
+  blocks: { type: 'noul', noul: 0.81, ...extra },
+  urgency: {
+    type: 'score',
+    score: 2.6,
+    confidence: 0.75,
+    legend: {},
+    probabilities: { '0': 0.05, '1': 0.05, '2': 0.2, '3': 0.7 },
+    ...extra,
+  },
+};
 
-describe('computePriority in levels mode', () => {
-  it('asks a single "task urgency" score question with the given instructions and criteria', async () => {
+describe('computePriority', () => {
+  it('asks every question in one call, with the task as state', async () => {
     const { classify } = await import('./laya-browser/model');
     const { computePriority } = await import('./priority');
-    vi.mocked(classify).mockResolvedValue(scoreAnswer(2.6, { '0': 0.1, '1': 0.1, '2': 0.1, '3': 0.7 }, 0.75));
+    vi.mocked(classify).mockResolvedValue(response(ANSWERS));
 
-    const result = await computePriority('Fix login bug', 'Users cannot log in', {
-      instructions: 'How urgent is this task?',
-      mode: 'levels',
-      criteria: ['low', 'medium', 'high', 'critical'],
-    });
+    await computePriority('Fix login bug', 'Users cannot log in', QUESTIONS);
 
     expect(classify).toHaveBeenCalledWith(
       { title: 'Fix login bug', description: 'Users cannot log in' },
-      {
-        'task urgency': {
-          type: 'score',
-          instructions: 'How urgent is this task?',
-          criteria: ['low', 'medium', 'high', 'critical'],
-        },
-      },
+      QUESTIONS,
       undefined,
     );
-    expect(result).toEqual({ label: 'critical', score: 2.6, confidence: 0.75, mode: 'levels' });
   });
 
-  it('labels the task with its most probable level, not the rounded mean index', async () => {
+  it('takes the headline from the score question and lists the other answers', async () => {
     const { classify } = await import('./laya-browser/model');
     const { computePriority } = await import('./priority');
-    // Mean index 0*0.55 + 6*0.45 = 2.7 would round to "critical", which neither option supports.
-    vi.mocked(classify).mockResolvedValue(
-      scoreAnswer(2.7, { '0': 0.55, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0.45 }),
-    );
+    vi.mocked(classify).mockResolvedValue(response(ANSWERS));
 
-    const result = await computePriority('Task', '', { instructions: 'How urgent?', mode: 'levels', criteria: LEVELS });
+    const result = await computePriority('Task', '', QUESTIONS);
 
-    expect(result.label).toBe('not urgent');
+    expect(result).toEqual({
+      label: 'critical',
+      score: 2.6,
+      confidence: 0.75,
+      answers: [
+        { question: 'requester', answer: 'manager' },
+        { question: 'blocks', answer: 'yes' },
+      ],
+    });
   });
 
-  it('propagates rejection from classify so the caller can decide how to surface the failure', async () => {
+  it('uses the most probable level rather than rounding the mean score', async () => {
+    const { classify } = await import('./laya-browser/model');
+    const { computePriority } = await import('./priority');
+    vi.mocked(classify).mockResolvedValue(
+      response({
+        urgency: {
+          ...ANSWERS.urgency,
+          score: 1.5,
+          probabilities: { '0': 0.45, '1': 0, '2': 0, '3': 0.55 },
+        },
+      }),
+    );
+
+    const result = await computePriority('Task', '', { urgency: QUESTIONS.urgency });
+
+    expect(result.label).toBe('critical');
+  });
+
+  it('has no headline when no question is a score question', async () => {
+    const { classify } = await import('./laya-browser/model');
+    const { computePriority } = await import('./priority');
+    vi.mocked(classify).mockResolvedValue(response({ blocks: { type: 'noul', noul: 0.2, ...extra } }));
+
+    const result = await computePriority('Task', '', { blocks: QUESTIONS.blocks });
+
+    expect(result).toEqual({ label: '', score: 0, confidence: 0, answers: [{ question: 'blocks', answer: 'no' }] });
+  });
+
+  it('passes classify errors through', async () => {
     const { classify } = await import('./laya-browser/model');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockRejectedValue(new Error('model unavailable'));
 
-    await expect(
-      computePriority('Task', '', { instructions: 'How urgent?', mode: 'levels', criteria: ['low', 'high'] }),
-    ).rejects.toThrow('model unavailable');
-  });
-});
-
-describe('computePriority in yes/no (instructions only) mode', () => {
-  it('asks the instructions as a yes/no question with no criteria list', async () => {
-    const { classify } = await import('./laya-browser/model');
-    const { computePriority } = await import('./priority');
-    vi.mocked(classify).mockResolvedValue(noulAnswer(0.78));
-
-    const result = await computePriority('Fix login bug', 'Users cannot log in', {
-      instructions: 'Does this need doing today?',
-      mode: 'yesno',
-      criteria: LEVELS,
-    });
-
-    expect(classify).toHaveBeenCalledWith(
-      { title: 'Fix login bug', description: 'Users cannot log in' },
-      { 'task urgency': { type: 'noul', instructions: 'Does this need doing today?' } },
-      undefined,
-    );
-    expect(result).toEqual({ label: 'yes', score: 0.78, confidence: 0.78, mode: 'yesno' });
-  });
-
-  it('answers no, with the probability of no, when yes is under 50%', async () => {
-    const { classify } = await import('./laya-browser/model');
-    const { computePriority } = await import('./priority');
-    vi.mocked(classify).mockResolvedValue(noulAnswer(0.3));
-
-    const result = await computePriority('Task', '', { instructions: 'Urgent?', mode: 'yesno', criteria: [] });
-
-    expect(result.label).toBe('no');
-    expect(result.score).toBe(0.3);
-    expect(result.confidence).toBeCloseTo(0.7, 10);
-  });
-
-  it('falls back to the default instructions when they are blank', async () => {
-    const { classify } = await import('./laya-browser/model');
-    const { computePriority } = await import('./priority');
-    vi.mocked(classify).mockResolvedValue(noulAnswer(0.6));
-
-    await computePriority('Task', '', { instructions: '   ', mode: 'yesno', criteria: [] });
-
-    expect(classify).toHaveBeenCalledWith(
-      expect.anything(),
-      { 'task urgency': { type: 'noul', instructions: 'How urgent is this task?' } },
-      undefined,
-    );
+    await expect(computePriority('Task', '', QUESTIONS)).rejects.toThrow('model unavailable');
   });
 });

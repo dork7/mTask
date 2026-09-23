@@ -1,18 +1,17 @@
-/** 'levels': pick one of the criteria levels. 'yesno': answer the instructions alone, yes or no. */
-export type PriorityMode = 'levels' | 'yesno';
-
-export interface PriorityQuestion {
-  instructions: string;
-  mode: PriorityMode;
+/** One answered question, shown under a task next to the headline priority. */
+export interface AnswerSummary {
+  question: string;
+  answer: string;
 }
 
 export interface TaskPriority {
+  /** Headline result, from the first 'score' question; empty when the questions have none. */
   label: string;
   score: number;
   confidence: number;
   status: 'pending' | 'done' | 'error';
-  /** How the result was computed; absent on results stored before yes/no mode existed. */
-  mode?: PriorityMode;
+  /** Answers to the remaining questions. */
+  answers?: AnswerSummary[];
 }
 
 export interface Task {

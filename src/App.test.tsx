@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('./lib/priority', () => ({
@@ -34,7 +34,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Add task' }));
 
     expect(screen.getByText('Classifying…')).toBeInTheDocument();
-    resolve({ label: 'high', score: 2.6, confidence: 0.9, mode: 'levels' as const });
+    resolve({ label: 'high', score: 2.6, confidence: 0.9, answers: [] });
     expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
   });
 
@@ -42,7 +42,7 @@ describe('App', () => {
     const { computePriority } = await import('./lib/priority');
     vi.mocked(computePriority)
       .mockRejectedValueOnce(new Error('model unavailable'))
-      .mockResolvedValueOnce({ label: 'low', score: 0.2, confidence: 0.6, mode: 'levels' as const });
+      .mockResolvedValueOnce({ label: 'low', score: 0.2, confidence: 0.6, answers: [] });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
@@ -59,7 +59,7 @@ describe('App', () => {
 
   it('toggling done and deleting a task both work', async () => {
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'low', score: 0, confidence: 0.5, mode: 'levels' as const });
+    vi.mocked(computePriority).mockResolvedValue({ label: 'low', score: 0, confidence: 0.5, answers: [] });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
@@ -73,23 +73,6 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     expect(await screen.findByText('No tasks yet.')).toBeInTheDocument();
-  });
-
-  it('editing criteria does not change an already-classified task\'s displayed label', async () => {
-    const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'high', score: 2, confidence: 0.9, mode: 'levels' as const });
-    const user = userEvent.setup();
-    const App = (await import('./App')).default;
-    render(<App />);
-
-    await user.type(screen.getByLabelText('Title'), 'Fix login bug');
-    await user.click(screen.getByRole('button', { name: 'Add task' }));
-    await screen.findByText(/Priority: high/);
-
-    await user.clear(screen.getByLabelText('Criteria level 3'));
-    await user.type(screen.getByLabelText('Criteria level 3'), 'urgent');
-
-    expect(screen.getByText(/Priority: high/)).toBeInTheDocument();
   });
 
   it('disables classification with a banner when Cache Storage is unavailable, leaving tasks usable', async () => {
@@ -124,7 +107,7 @@ describe('App', () => {
       ]),
     );
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'urgent', score: 2, confidence: 0.7, mode: 'levels' as const });
+    vi.mocked(computePriority).mockResolvedValue({ label: 'urgent', score: 2, confidence: 0.7, answers: [] });
     const App = (await import('./App')).default;
     render(<App />);
 
@@ -133,53 +116,149 @@ describe('App', () => {
     expect(computePriority).toHaveBeenCalledWith(
       'Interrupted task',
       'page was closed mid-download',
-      expect.objectContaining({ mode: 'levels' }),
+      expect.objectContaining({ urgency: expect.objectContaining({ type: 'score' }) }),
       expect.any(Function),
     );
   });
 
-  it('in yes/no mode, classifies with the instructions alone and shows the answer', async () => {
+  it('classifies with the questions from the field and shows the other answers', async () => {
     const { computePriority } = await import('./lib/priority');
-    vi.mocked(computePriority).mockResolvedValue({ label: 'yes', score: 0.81, confidence: 0.81, mode: 'yesno' });
+    vi.mocked(computePriority).mockResolvedValue({
+      label: 'high',
+      score: 2,
+      confidence: 0.9,
+      answers: [{ question: 'requester', answer: 'manager' }],
+    });
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
 
-    await user.clear(screen.getByLabelText('Instructions'));
-    await user.type(screen.getByLabelText('Instructions'), 'Does this need doing today?');
-    await user.click(screen.getByRole('radio', { name: /yes\/no/i }));
+    fireEvent.change(screen.getByLabelText('Questions (JSON)'), {
+      target: {
+        value: '{"urgency":{"type":"score","instructions":"How urgent?","criteria":["low","high"]}}',
+      },
+    });
     await user.type(screen.getByLabelText('Title'), 'Pay rent');
     await user.click(screen.getByRole('button', { name: 'Add task' }));
 
-    expect(await screen.findByText('Answer: yes (81% likely)')).toBeInTheDocument();
+    expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
+    expect(screen.getByText('requester: manager')).toBeInTheDocument();
     expect(computePriority).toHaveBeenCalledWith(
       'Pay rent',
       '',
-      expect.objectContaining({ instructions: 'Does this need doing today?', mode: 'yesno' }),
+      { urgency: { type: 'score', instructions: 'How urgent?', criteria: ['low', 'high'] } },
       expect.any(Function),
     );
   });
 
-  it('remembers the instructions and mode across page loads', async () => {
-    localStorage.setItem('priorityQuestion', JSON.stringify({ instructions: 'Due today?', mode: 'yesno' }));
+  it('starts with the default questions in the field', async () => {
     const App = (await import('./App')).default;
     render(<App />);
-
-    expect(screen.getByLabelText('Instructions')).toHaveValue('Due today?');
-    expect(screen.getByRole('radio', { name: /yes\/no/i })).toBeChecked();
+    const value = (screen.getByLabelText('Questions (JSON)') as HTMLTextAreaElement).value;
+    expect(Object.keys(JSON.parse(value))).toEqual(['requester', 'deadline', 'blocksOthers', 'urgency']);
   });
 
-  it('saves edited instructions', async () => {
+  it('remembers the questions across page loads', async () => {
+    localStorage.setItem('priorityQuestions', '{"a":{"type":"noul","instructions":"Due today?"}}');
+    const App = (await import('./App')).default;
+    render(<App />);
+    expect(screen.getByLabelText('Questions (JSON)')).toHaveValue('{"a":{"type":"noul","instructions":"Due today?"}}');
+  });
+
+  it('saves edits to the field', async () => {
+    const App = (await import('./App')).default;
+    render(<App />);
+    fireEvent.change(screen.getByLabelText('Questions (JSON)'), { target: { value: 'anything' } });
+    expect(localStorage.getItem('priorityQuestions')).toBe('anything');
+  });
+
+  it('shows the problem and adds tasks unclassified while the questions are invalid', async () => {
+    const { computePriority } = await import('./lib/priority');
     const user = userEvent.setup();
     const App = (await import('./App')).default;
     render(<App />);
 
-    await user.clear(screen.getByLabelText('Instructions'));
-    await user.type(screen.getByLabelText('Instructions'), 'Is it blocking anyone?');
+    fireEvent.change(screen.getByLabelText('Questions (JSON)'), { target: { value: '{"a": ' } });
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid json/i);
 
-    expect(JSON.parse(localStorage.getItem('priorityQuestion')!)).toEqual({
-      instructions: 'Is it blocking anyone?',
-      mode: 'levels',
+    await user.type(screen.getByLabelText('Title'), 'Pay rent');
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+
+    expect(screen.getByText('Pay rent')).toBeInTheDocument();
+    expect(screen.queryByText('Classifying…')).not.toBeInTheDocument();
+    expect(computePriority).not.toHaveBeenCalled();
+  });
+
+  describe('re-evaluate all', () => {
+    const task = (id: string, title: string, done = false) => ({
+      id,
+      title,
+      description: '',
+      createdAt: '2026-09-23T00:00:00.000Z',
+      done,
+      priority: { label: 'low', score: 0, confidence: 0.5, status: 'done' },
+    });
+
+    it('is hidden when there are no tasks', async () => {
+      const App = (await import('./App')).default;
+      render(<App />);
+      await screen.findByText('No tasks yet.');
+      expect(screen.queryByRole('button', { name: /re-evaluate all/i })).not.toBeInTheDocument();
+    });
+
+    it('classifies every task again with the current questions, one at a time', async () => {
+      localStorage.setItem('tasks', JSON.stringify([task('1', 'First'), task('2', 'Second', true)]));
+      const { computePriority } = await import('./lib/priority');
+      let running = 0;
+      let maxRunning = 0;
+      vi.mocked(computePriority).mockImplementation(async () => {
+        maxRunning = Math.max(maxRunning, ++running);
+        await Promise.resolve();
+        running--;
+        return { label: 'critical', score: 3, confidence: 0.9, answers: [] };
+      });
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      fireEvent.change(screen.getByLabelText('Questions (JSON)'), {
+        target: { value: '{"u":{"type":"score","instructions":"How urgent?","criteria":["low","critical"]}}' },
+      });
+      await user.click(screen.getByRole('button', { name: 'Re-evaluate all' }));
+
+      expect(await screen.findAllByText(/Priority: critical/)).toHaveLength(2);
+      expect(computePriority).toHaveBeenCalledTimes(2);
+      expect(computePriority).toHaveBeenCalledWith('First', '', expect.objectContaining({ u: expect.anything() }), expect.any(Function));
+      expect(computePriority).toHaveBeenCalledWith('Second', '', expect.objectContaining({ u: expect.anything() }), expect.any(Function));
+      expect(maxRunning).toBe(1);
+      expect(screen.getByRole('button', { name: 'Re-evaluate all' })).toBeEnabled();
+    });
+
+    it('shows tasks as classifying and disables the button while it runs', async () => {
+      localStorage.setItem('tasks', JSON.stringify([task('1', 'First')]));
+      const { computePriority } = await import('./lib/priority');
+      let resolve!: (value: Awaited<ReturnType<typeof computePriority>>) => void;
+      vi.mocked(computePriority).mockReturnValue(new Promise((r) => (resolve = r)));
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Re-evaluate all' }));
+
+      expect(screen.getByText('Classifying…')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Re-evaluating…' })).toBeDisabled();
+      resolve({ label: 'high', score: 2, confidence: 0.9, answers: [] });
+      expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
+    });
+
+    it('is disabled while the questions are invalid', async () => {
+      localStorage.setItem('tasks', JSON.stringify([task('1', 'First')]));
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      fireEvent.change(screen.getByLabelText('Questions (JSON)'), { target: { value: '{' } });
+
+      expect(screen.getByRole('button', { name: 'Re-evaluate all' })).toBeDisabled();
     });
   });
 });
