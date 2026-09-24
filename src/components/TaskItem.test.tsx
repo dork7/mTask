@@ -72,16 +72,80 @@ describe('TaskItem', () => {
     expect(onDelete).toHaveBeenCalledWith('1');
   });
 
-  it('shows a yes/no answer with how likely it is', () => {
+  it('shows the answers to the other questions under the priority', () => {
     render(
       <TaskItem
-        task={makeTask({ priority: { label: 'yes', score: 0.78, confidence: 0.78, status: 'done', mode: 'yesno' } })}
+        task={makeTask({
+          priority: {
+            label: 'high',
+            score: 2,
+            confidence: 0.8,
+            status: 'done',
+            answers: [
+              { question: 'requester', answer: 'manager' },
+              { question: 'deadline', answer: 'hours' },
+            ],
+          },
+        })}
         onToggleDone={vi.fn()}
         onDelete={vi.fn()}
         onRetry={vi.fn()}
       />,
     );
-    expect(screen.getByText('Answer: yes (78% likely)')).toBeInTheDocument();
+    expect(screen.getByText('requester: manager · deadline: hours')).toBeInTheDocument();
+  });
+
+  it('shows only the answers when there is no headline priority', () => {
+    render(
+      <TaskItem
+        task={makeTask({
+          priority: {
+            label: '',
+            score: 0,
+            confidence: 0,
+            status: 'done',
+            answers: [{ question: 'blocksOthers', answer: 'yes' }],
+          },
+        })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('blocksOthers: yes')).toBeInTheDocument();
     expect(screen.queryByText(/Priority:/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['urgent', 'tag-red'],
+    ['critical', 'tag-red'],
+    ['medium', 'tag-orange'],
+    ['not urgent', 'tag-yellow'],
+    ['immediate action required', 'tag-darkred'],
+    ['High', 'tag-brown'],
+    ['low', 'tag-green'],
+    ['no action required', 'tag-yellow'],
+  ])('tags a "%s" priority with %s', (label, cls) => {
+    render(
+      <TaskItem
+        task={makeTask({ priority: { label, score: 1, confidence: 0.8, status: 'done' } })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/^Priority:/)).toHaveClass('tag', cls);
+  });
+
+  it('leaves other labels untagged', () => {
+    render(
+      <TaskItem
+        task={makeTask({ priority: { label: 'somewhat urgent', score: 1, confidence: 0.8, status: 'done' } })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/^Priority:/)).not.toHaveClass('tag');
   });
 });
