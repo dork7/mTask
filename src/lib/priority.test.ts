@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { QuestionSet } from '../storage/questionsStore';
 
-vi.mock('./laya-browser/model', () => ({
+vi.mock('./laya-browser/classifyClient', () => ({
   classify: vi.fn(),
 }));
 
@@ -36,7 +36,7 @@ const ANSWERS = {
 
 describe('computePriority', () => {
   it('asks every question in one call, with the task as state', async () => {
-    const { classify } = await import('./laya-browser/model');
+    const { classify } = await import('./laya-browser/classifyClient');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockResolvedValue(response(ANSWERS));
 
@@ -50,7 +50,7 @@ describe('computePriority', () => {
   });
 
   it('takes the headline from the score question and lists the other answers', async () => {
-    const { classify } = await import('./laya-browser/model');
+    const { classify } = await import('./laya-browser/classifyClient');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockResolvedValue(response(ANSWERS));
 
@@ -68,7 +68,7 @@ describe('computePriority', () => {
   });
 
   it('uses the most probable level rather than rounding the mean score', async () => {
-    const { classify } = await import('./laya-browser/model');
+    const { classify } = await import('./laya-browser/classifyClient');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockResolvedValue(
       response({
@@ -86,7 +86,7 @@ describe('computePriority', () => {
   });
 
   it('has no headline when no question is a score question', async () => {
-    const { classify } = await import('./laya-browser/model');
+    const { classify } = await import('./laya-browser/classifyClient');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockResolvedValue(response({ blocks: { type: 'noul', noul: 0.2, ...extra } }));
 
@@ -96,7 +96,7 @@ describe('computePriority', () => {
   });
 
   it('passes classify errors through', async () => {
-    const { classify } = await import('./laya-browser/model');
+    const { classify } = await import('./laya-browser/classifyClient');
     const { computePriority } = await import('./priority');
     vi.mocked(classify).mockRejectedValue(new Error('model unavailable'));
 

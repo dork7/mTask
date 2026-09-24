@@ -13,7 +13,7 @@ describe('TaskForm', () => {
     await user.type(screen.getByLabelText('Description'), ' 2% please ');
     await user.click(screen.getByRole('button', { name: 'Add task' }));
 
-    expect(onAdd).toHaveBeenCalledWith('Buy milk', '2% please');
+    expect(onAdd).toHaveBeenCalledWith('Buy milk', '2% please', undefined);
     expect(screen.getByLabelText('Title')).toHaveValue('');
     expect(screen.getByLabelText('Description')).toHaveValue('');
   });

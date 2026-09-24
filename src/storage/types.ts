@@ -4,6 +4,11 @@ export interface AnswerSummary {
   answer: string;
 }
 
+export interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'none';
+  interval?: number;
+}
+
 export interface TaskPriority {
   /** Headline result, from the first 'score' question; empty when the questions have none. */
   label: string;
@@ -12,6 +17,8 @@ export interface TaskPriority {
   status: 'pending' | 'done' | 'error';
   /** Answers to the remaining questions. */
   answers?: AnswerSummary[];
+  /** Picked by the user; classification results no longer replace it. */
+  manual?: boolean;
 }
 
 export interface Task {
@@ -21,4 +28,5 @@ export interface Task {
   createdAt: string;
   done: boolean;
   priority?: TaskPriority;
+  recurrence?: RecurrenceRule;
 }

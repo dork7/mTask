@@ -92,7 +92,103 @@ describe('TaskItem', () => {
         onRetry={vi.fn()}
       />,
     );
-    expect(screen.getByText('requester: manager · deadline: hours')).toBeInTheDocument();
+    expect(screen.getByText('requester: manager')).toHaveClass('badge', 'badge-blue');
+    expect(screen.getByText('deadline: hours')).toHaveClass('badge', 'badge-purple');
+  });
+
+  it('colours yes/no answers green and grey', () => {
+    render(
+      <TaskItem
+        task={makeTask({
+          priority: {
+            label: 'high',
+            score: 2,
+            confidence: 0.8,
+            status: 'done',
+            answers: [
+              { question: 'blocks', answer: 'yes' },
+              { question: 'meeting', answer: 'no' },
+            ],
+          },
+        })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('blocks: yes')).toHaveClass('badge-green');
+    expect(screen.getByText('meeting: no')).toHaveClass('badge-gray');
+  });
+
+  it('lets the user change the priority from the dropdown', async () => {
+    const user = userEvent.setup();
+    const onSetPriority = vi.fn();
+    render(
+      <TaskItem
+        task={makeTask({ priority: { label: 'low', score: 0, confidence: 0.6, status: 'done' } })}
+        priorityOptions={['low', 'medium', 'high']}
+        onSetPriority={onSetPriority}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    const select = screen.getByRole('combobox', { name: 'Priority for Buy milk' });
+    expect(select).toHaveValue('low');
+    expect(select).toHaveClass('tag-green');
+
+    await user.selectOptions(select, 'high');
+
+    expect(onSetPriority).toHaveBeenCalledWith('1', 'high');
+  });
+
+  it('offers "Set priority" while the task has no priority yet', () => {
+    render(
+      <TaskItem
+        task={makeTask()}
+        priorityOptions={['low', 'high']}
+        onSetPriority={vi.fn()}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('combobox', { name: 'Priority for Buy milk' })).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Set priority' })).toBeInTheDocument();
+  });
+
+  it('shows "edited by you" instead of the confidence for a priority the user set', () => {
+    render(
+      <TaskItem
+        task={makeTask({ priority: { label: 'high', score: 2, confidence: 1, status: 'done', manual: true } })}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('edited by you')).toBeInTheDocument();
+    expect(screen.queryByText(/confidence/)).not.toBeInTheDocument();
+  });
+
+  it('lets the user change an answer from its badge', async () => {
+    const user = userEvent.setup();
+    const onSetAnswer = vi.fn();
+    render(
+      <TaskItem
+        task={makeTask({
+          priority: { label: 'high', score: 2, confidence: 0.8, status: 'done', answers: [{ question: 'blocks', answer: 'no' }] },
+        })}
+        answerOptions={{ blocks: ['yes', 'no'] }}
+        onSetAnswer={onSetAnswer}
+        onToggleDone={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'blocks for Buy milk' }), 'yes');
+
+    expect(onSetAnswer).toHaveBeenCalledWith('1', 'blocks', 'yes');
   });
 
   it('shows only the answers when there is no headline priority', () => {

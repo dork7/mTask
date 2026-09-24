@@ -7,7 +7,7 @@ export interface QuestionsFieldProps {
 
 export function QuestionsField({ value, onChange, error }: QuestionsFieldProps) {
   return (
-    <section aria-label="Questions">
+    <section className="card" aria-label="Questions">
       <label htmlFor="priority-questions">Questions (JSON)</label>
       <textarea
         id="priority-questions"

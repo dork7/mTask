@@ -1,4 +1,4 @@
-import { classify } from './laya-browser/model';
+import { classify } from './laya-browser/classifyClient';
 import type { Answer, Question } from './laya-browser/types';
 import type { ProgressInfo } from './laya-browser/modelBundle';
 import type { QuestionSet } from '../storage/questionsStore';

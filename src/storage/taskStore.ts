@@ -17,7 +17,7 @@ export function saveTasks(tasks: Task[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
 }
 
-export function createTask(title: string, description: string): Task {
+export function createTask(title: string, description: string, recurrence?: import('./types').RecurrenceRule): Task {
   return {
     id: crypto.randomUUID(),
     title,
@@ -25,5 +25,6 @@ export function createTask(title: string, description: string): Task {
     createdAt: new Date().toISOString(),
     done: false,
     priority: { label: '', score: 0, confidence: 0, status: 'pending' },
+    recurrence,
   };
 }

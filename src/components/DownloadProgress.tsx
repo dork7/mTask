@@ -19,7 +19,7 @@ export function DownloadProgress({ progress }: DownloadProgressProps) {
       ? `${formatBytes(loaded)} of ${formatBytes(size)} (${Math.round((loaded / size) * 100)}%)`
       : `${formatBytes(loaded)} received`;
   return (
-    <div className="download" role="status" aria-label={action}>
+    <div className="card download" role="status" aria-label={action}>
       <p>
         {action} — {file}, {index} of {total} files
       </p>

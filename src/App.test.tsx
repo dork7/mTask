@@ -189,6 +189,53 @@ describe('App', () => {
     expect(computePriority).not.toHaveBeenCalled();
   });
 
+  it('a priority picked by the user is kept when the model result arrives later', async () => {
+    const { computePriority } = await import('./lib/priority');
+    let resolve!: (value: Awaited<ReturnType<typeof computePriority>>) => void;
+    vi.mocked(computePriority).mockReturnValue(new Promise((r) => (resolve = r)));
+    const user = userEvent.setup();
+    const App = (await import('./App')).default;
+    render(<App />);
+    fireEvent.change(screen.getByLabelText('Questions (JSON)'), {
+      target: { value: '{"u":{"type":"score","instructions":"How urgent?","criteria":["low","high"]}}' },
+    });
+
+    await user.type(screen.getByLabelText('Title'), 'Pay rent');
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Priority for Pay rent' }), 'high');
+    resolve({ label: 'low', score: 0, confidence: 0.9, answers: [] });
+
+    await screen.findByText('edited by you');
+    expect(screen.getByRole('combobox', { name: 'Priority for Pay rent' })).toHaveValue('high');
+    expect(JSON.parse(localStorage.getItem('tasks')!)[0].priority).toMatchObject({ label: 'high', manual: true });
+  });
+
+  it('changing an answer badge updates and saves the answer', async () => {
+    const { computePriority } = await import('./lib/priority');
+    vi.mocked(computePriority).mockResolvedValue({
+      label: 'high',
+      score: 1,
+      confidence: 0.8,
+      answers: [{ question: 'blocks', answer: 'no' }],
+    });
+    const user = userEvent.setup();
+    const App = (await import('./App')).default;
+    render(<App />);
+    fireEvent.change(screen.getByLabelText('Questions (JSON)'), {
+      target: {
+        value:
+          '{"u":{"type":"score","instructions":"How urgent?","criteria":["low","high"]},"blocks":{"type":"noul","instructions":"Blocking?"}}',
+      },
+    });
+
+    await user.type(screen.getByLabelText('Title'), 'Pay rent');
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'blocks for Pay rent' }), 'yes');
+
+    expect(screen.getByRole('combobox', { name: 'blocks for Pay rent' })).toHaveValue('yes');
+    expect(JSON.parse(localStorage.getItem('tasks')!)[0].priority.answers).toEqual([{ question: 'blocks', answer: 'yes' }]);
+  });
+
   describe('re-evaluate all', () => {
     const task = (id: string, title: string, done = false) => ({
       id,
@@ -249,6 +296,28 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: 'Re-evaluating…' })).toBeDisabled();
       resolve({ label: 'high', score: 2, confidence: 0.9, answers: [] });
       expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
+    });
+
+    it('keeps priorities the user set by hand', async () => {
+      localStorage.setItem(
+        'tasks',
+        JSON.stringify([
+          task('1', 'First'),
+          { ...task('2', 'Second'), priority: { label: 'high', score: 1, confidence: 1, status: 'done', manual: true } },
+        ]),
+      );
+      const { computePriority } = await import('./lib/priority');
+      vi.mocked(computePriority).mockResolvedValue({ label: 'low', score: 0, confidence: 0.9, answers: [] });
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Re-evaluate all' }));
+
+      await screen.findByRole('button', { name: 'Re-evaluate all' });
+      expect(computePriority).toHaveBeenCalledTimes(1);
+      expect(computePriority).toHaveBeenCalledWith('First', '', expect.anything(), expect.any(Function));
+      expect(screen.getByText('edited by you')).toBeInTheDocument();
     });
 
     it('is disabled while the questions are invalid', async () => {
