@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTask, loadTasks, saveTasks } from './storage/taskStore';
 import { loadQuestionsText, parseQuestions, saveQuestionsText, type QuestionSet } from './storage/questionsStore';
-import type { Task } from './storage/types';
+import type { RecurrenceRule, Task } from './storage/types';
 import { computePriority } from './lib/priority';
 import type { ProgressInfo } from './lib/laya-browser/modelBundle';
 import type { Question } from './lib/laya-browser/types';
@@ -10,6 +10,9 @@ import { TaskList } from './components/TaskList';
 import { QuestionsField } from './components/QuestionsField';
 import { DownloadProgress } from './components/DownloadProgress';
 import { PriorityHeatmap } from './components/PriorityHeatmap';
+import { TaskToolbar } from './components/TaskToolbar';
+import { applyView, DEFAULT_VIEW, type TaskView } from './lib/taskView';
+import { backupFileName, makeBackup, mergeTasks, parseBackup } from './storage/backup';
 
 function optionsFor(q: Question): string[] {
   if (q.type === 'noul') return ['yes', 'no'];
@@ -23,6 +26,11 @@ function App() {
   const [progress, setProgress] = useState<ProgressInfo | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reevaluating, setReevaluating] = useState(false);
+  const [view, setView] = useState<TaskView>(DEFAULT_VIEW);
+  const [backupMessage, setBackupMessage] = useState('');
+  const importInput = useRef<HTMLInputElement>(null);
+  // Latest classification run per task: an older run finishing late must not overwrite a newer one.
+  const runs = useRef(new Map<string, number>());
   // The ~1.7GB model can only be kept in Cache Storage (missing in old browsers / some private modes).
   const [canClassify] = useState(() => typeof caches !== 'undefined');
 
@@ -71,17 +79,20 @@ function App() {
   };
 
   const runClassification = async (task: Task, questions: QuestionSet) => {
+    const run = (runs.current.get(task.id) ?? 0) + 1;
+    runs.current.set(task.id, run);
+    const isLatest = () => runs.current.get(task.id) === run;
     try {
       const result = await computePriority(task.title, task.description, questions, setProgress);
-      patchAutoPriority(task.id, { ...result, status: 'done' });
+      if (isLatest()) patchAutoPriority(task.id, { ...result, status: 'done' });
     } catch {
-      patchAutoPriority(task.id, { label: '', score: 0, confidence: 0, status: 'error' });
+      if (isLatest()) patchAutoPriority(task.id, { label: '', score: 0, confidence: 0, status: 'error' });
     } finally {
       setProgress(null);
     }
   };
 
-  const handleAdd = (title: string, description: string, recurrence?: import('./storage/types').RecurrenceRule) => {
+  const handleAdd = (title: string, description: string, recurrence?: RecurrenceRule) => {
     const task = createTask(title, description, recurrence);
     if (!canClassify || !parsed.ok) {
       updateTasksState((prev) => [...prev, { ...task, priority: undefined }]);
@@ -160,10 +171,60 @@ function App() {
     );
   };
 
+  const handleEdit = (id: string, title: string, description: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task || !title) return;
+    const changed = title !== task.title || description !== task.description;
+    // New text means a new priority, unless the user picked it by hand.
+    const rescore = changed && !task.priority?.manual && canClassify && parsed.ok;
+    const pending: Task['priority'] = { label: '', score: 0, confidence: 0, status: 'pending' };
+    updateTasksState((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, title, description, ...(rescore ? { priority: pending } : {}) } : t)),
+    );
+    if (rescore) void runClassification({ ...task, title, description }, parsed.questions);
+  };
+
   const handleQuestionsChange = (next: string) => {
     setQuestionsText(next);
     saveQuestionsText(next);
   };
+
+  const handleExport = () => {
+    const blob = new Blob([makeBackup(tasks, questionsText)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = backupFileName();
+    link.click();
+    URL.revokeObjectURL(url);
+    setBackupMessage(`Exported ${tasks.length} task${tasks.length === 1 ? '' : 's'}.`);
+  };
+
+  const handleImport = async (file: File) => {
+    const result = parseBackup(await file.text());
+    if (!result.ok) {
+      setBackupMessage(`Couldn't import: ${result.error}.`);
+      return;
+    }
+    let questions = parsed.ok ? parsed.questions : undefined;
+    if (result.questions !== undefined) {
+      handleQuestionsChange(result.questions);
+      const imported = parseQuestions(result.questions);
+      questions = imported.ok ? imported.questions : undefined;
+    }
+    // Tasks exported mid-classification: finish them here, or drop the stuck status.
+    const canRun = canClassify && questions !== undefined;
+    const pending = result.tasks.filter((t) => t.priority?.status === 'pending');
+    const incoming = canRun
+      ? result.tasks
+      : result.tasks.map((t) => (t.priority?.status === 'pending' ? { ...t, priority: undefined } : t));
+    updateTasksState((prev) => mergeTasks(prev, incoming));
+    if (canRun) pending.forEach((t) => void runClassification(t, questions!));
+    const count = `${result.tasks.length} task${result.tasks.length === 1 ? '' : 's'}`;
+    setBackupMessage(`Imported ${count}${result.questions !== undefined ? ' and your questions' : ''}.`);
+  };
+
+  const visibleTasks = applyView(tasks, view, priorityOptions);
 
   if (!loaded) return null;
 
@@ -176,6 +237,7 @@ function App() {
             <a href="#add">Add</a>
             <a href="#tasks">Tasks</a>
             <a href="#questions">Questions</a>
+            <a href="#backup">Backup</a>
           </div>
         </div>
       </nav>
@@ -210,8 +272,10 @@ function App() {
             )}
           </div>
           <PriorityHeatmap tasks={tasks} />
+          {tasks.length > 0 && <TaskToolbar view={view} onChange={setView} priorityOptions={priorityOptions} />}
           <TaskList
-            tasks={tasks}
+            tasks={visibleTasks}
+            emptyText={tasks.length === 0 ? 'No tasks yet.' : 'No tasks match these filters.'}
             priorityOptions={priorityOptions}
             answerOptions={answerOptions}
             onToggleDone={handleToggleDone}
@@ -219,6 +283,7 @@ function App() {
             onRetry={handleRetry}
             onSetPriority={handleSetPriority}
             onSetAnswer={handleSetAnswer}
+            onEdit={handleEdit}
           />
         </section>
 
@@ -226,6 +291,39 @@ function App() {
           <h2 className="band-title">Questions.</h2>
           <p className="band-sub">Tell the model what to ask about every task.</p>
           <QuestionsField value={questionsText} onChange={handleQuestionsChange} error={parsed.ok ? undefined : parsed.error} />
+        </section>
+
+        <section className="band" id="backup" aria-label="Backup">
+          <h2 className="band-title">Backup.</h2>
+          <p className="band-sub">Save your tasks and questions to a file, or load them on another device.</p>
+          <div className="card backup">
+            <div className="backup-actions">
+              <button type="button" className="pill" onClick={handleExport} disabled={tasks.length === 0}>
+                Export
+              </button>
+              <button type="button" className="pill pill-quiet" onClick={() => importInput.current?.click()}>
+                Import
+              </button>
+              <input
+                ref={importInput}
+                type="file"
+                accept="application/json,.json"
+                aria-label="Import backup file"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void handleImport(file);
+                }}
+              />
+            </div>
+            <p className="backup-note">Importing adds the file's tasks (replacing any with the same id) and its questions.</p>
+            {backupMessage && (
+              <p role="status" className="backup-message">
+                {backupMessage}
+              </p>
+            )}
+          </div>
         </section>
       </main>
 

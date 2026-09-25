@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { RecurrenceRule, Task } from '../storage/types';
 
 export interface TaskItemProps {
@@ -11,6 +12,7 @@ export interface TaskItemProps {
   /** Possible answers per question id, for the answer badges' dropdowns. */
   answerOptions?: Record<string, string[]>;
   onSetAnswer?: (id: string, question: string, answer: string) => void;
+  onEdit?: (id: string, title: string, description: string) => void;
 }
 
 /** Each question gets its own badge colour, in question order. */
@@ -54,7 +56,52 @@ export function TaskItem({
   onSetPriority,
   answerOptions = {},
   onSetAnswer,
+  onEdit,
 }: TaskItemProps) {
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+  const [draftDescription, setDraftDescription] = useState(task.description);
+
+  if (editing) {
+    const save = () => {
+      onEdit?.(task.id, draftTitle.trim(), draftDescription.trim());
+      setEditing(false);
+    };
+    return (
+      <li className="task task-editing">
+        <form
+          className="task-edit"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (draftTitle.trim()) save();
+          }}
+        >
+          <input aria-label="Edit title" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} autoFocus />
+          <textarea
+            aria-label="Edit description"
+            rows={2}
+            value={draftDescription}
+            onChange={(e) => setDraftDescription(e.target.value)}
+          />
+          <div className="task-edit-actions">
+            <button type="submit" className="pill pill-small" disabled={!draftTitle.trim()}>
+              Save
+            </button>
+            <button type="button" className="link" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </li>
+    );
+  }
+
+  const startEditing = () => {
+    setDraftTitle(task.title);
+    setDraftDescription(task.description);
+    setEditing(true);
+  };
+
   const { priority } = task;
   const current = priority?.status === 'done' ? priority.label : '';
   // Keep the current label selectable even if the questions no longer list it.
@@ -144,9 +191,16 @@ export function TaskItem({
           </div>
         )}
       </div>
-      <button type="button" className="link link-danger" onClick={() => onDelete(task.id)}>
-        Delete
-      </button>
+      <div className="task-actions">
+        {onEdit && (
+          <button type="button" className="link" onClick={startEditing}>
+            Edit
+          </button>
+        )}
+        <button type="button" className="link link-danger" onClick={() => onDelete(task.id)}>
+          Delete
+        </button>
+      </div>
     </li>
   );
 }

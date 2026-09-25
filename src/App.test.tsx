@@ -236,6 +236,158 @@ describe('App', () => {
     expect(JSON.parse(localStorage.getItem('tasks')!)[0].priority.answers).toEqual([{ question: 'blocks', answer: 'yes' }]);
   });
 
+  describe('editing a task', () => {
+    const stored = (priority: object) => [
+      { id: '1', title: 'Pay rent', description: '', createdAt: '2026-09-01T00:00:00Z', done: false, priority },
+    ];
+
+    it('saves the new text and classifies it again', async () => {
+      localStorage.setItem('tasks', JSON.stringify(stored({ label: 'low', score: 0, confidence: 0.6, status: 'done' })));
+      const { computePriority } = await import('./lib/priority');
+      vi.mocked(computePriority).mockResolvedValue({ label: 'high', score: 2, confidence: 0.9, answers: [] });
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.type(screen.getByLabelText('Edit title'), ' today');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(screen.getByText('Pay rent today')).toBeInTheDocument();
+      expect(await screen.findByText(/Priority: high/)).toBeInTheDocument();
+      expect(computePriority).toHaveBeenCalledWith('Pay rent today', '', expect.anything(), expect.any(Function));
+      expect(JSON.parse(localStorage.getItem('tasks')!)[0].title).toBe('Pay rent today');
+    });
+
+    it('keeps a priority the user set by hand', async () => {
+      localStorage.setItem(
+        'tasks',
+        JSON.stringify(stored({ label: 'low', score: 0, confidence: 1, status: 'done', manual: true })),
+      );
+      const { computePriority } = await import('./lib/priority');
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.type(screen.getByLabelText('Edit title'), ' today');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(screen.getByText('Pay rent today')).toBeInTheDocument();
+      expect(screen.getByText('edited by you')).toBeInTheDocument();
+      expect(computePriority).not.toHaveBeenCalled();
+    });
+
+    it('ignores a result from before the edit that arrives after it', async () => {
+      localStorage.setItem('tasks', JSON.stringify(stored({ label: 'low', score: 0, confidence: 0.6, status: 'done' })));
+      const { computePriority } = await import('./lib/priority');
+      const resolvers: ((v: Awaited<ReturnType<typeof computePriority>>) => void)[] = [];
+      vi.mocked(computePriority).mockImplementation(() => new Promise((r) => resolvers.push(r)));
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.type(screen.getByLabelText('Edit title'), ' today');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.type(screen.getByLabelText('Edit title'), '!');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      resolvers[1]({ label: 'critical', score: 3, confidence: 0.9, answers: [] });
+      expect(await screen.findByText(/Priority: critical/)).toBeInTheDocument();
+      resolvers[0]({ label: 'low', score: 0, confidence: 0.9, answers: [] });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.getByRole('combobox', { name: 'Priority for Pay rent today!' })).toHaveValue('critical');
+    });
+  });
+
+  describe('filter and sort', () => {
+    const tasks = [
+      { id: '1', title: 'Buy milk', description: '', createdAt: '2026-09-01T00:00:00Z', done: false, priority: { label: 'critical', score: 3, confidence: 0.9, status: 'done' } },
+      { id: '2', title: 'Fix login bug', description: '', createdAt: '2026-09-02T00:00:00Z', done: true, priority: { label: 'low', score: 0, confidence: 0.9, status: 'done' } },
+    ];
+    const titles = () => screen.getAllByRole('listitem').map((li) => li.querySelector('.task-title')?.textContent);
+
+    it('searches, filters and sorts the list', async () => {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      expect(titles()).toEqual(['Fix login bug', 'Buy milk']);
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'priority');
+      expect(titles()).toEqual(['Buy milk', 'Fix login bug']);
+
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Filter by status' }), 'done');
+      expect(titles()).toEqual(['Fix login bug']);
+
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Filter by status' }), 'all');
+      await user.type(screen.getByRole('searchbox', { name: 'Search tasks' }), 'nothing like this');
+      expect(screen.getByText('No tasks match these filters.')).toBeInTheDocument();
+    });
+  });
+
+  describe('backup', () => {
+    it('exports tasks and questions as a JSON file', async () => {
+      localStorage.setItem(
+        'tasks',
+        JSON.stringify([{ id: '1', title: 'Buy milk', description: '', createdAt: '2026-09-01T00:00:00Z', done: false }]),
+      );
+      const blobs: Blob[] = [];
+      vi.stubGlobal('URL', { ...URL, createObjectURL: (b: Blob) => (blobs.push(b), 'blob:x'), revokeObjectURL: vi.fn() });
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Export' }));
+
+      expect(click).toHaveBeenCalled();
+      const backup = JSON.parse(await blobs[0].text());
+      expect(backup.tasks.map((t: { title: string }) => t.title)).toEqual(['Buy milk']);
+      expect(typeof backup.questions).toBe('string');
+      expect(screen.getByText('Exported 1 task.')).toBeInTheDocument();
+      click.mockRestore();
+    });
+
+    it('imports tasks and questions from a file', async () => {
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+      const questions = '{"u":{"type":"score","instructions":"How urgent?","criteria":["low","high"]}}';
+      const file = new File(
+        [
+          JSON.stringify({
+            tasks: [
+              { id: '9', title: 'Imported task', description: '', createdAt: '2026-09-01T00:00:00Z', done: false, priority: { label: 'high', score: 1, confidence: 0.8, status: 'done' } },
+            ],
+            questions,
+          }),
+        ],
+        'backup.json',
+        { type: 'application/json' },
+      );
+
+      await user.upload(screen.getByLabelText('Import backup file'), file);
+
+      expect(await screen.findByText('Imported 1 task and your questions.')).toBeInTheDocument();
+      expect(screen.getByText('Imported task')).toBeInTheDocument();
+      expect(screen.getByLabelText('Questions (JSON)')).toHaveValue(questions);
+    });
+
+    it('reports a file it cannot read', async () => {
+      const user = userEvent.setup();
+      const App = (await import('./App')).default;
+      render(<App />);
+
+      await user.upload(screen.getByLabelText('Import backup file'), new File(['nope'], 'x.json', { type: 'application/json' }));
+
+      expect(await screen.findByText("Couldn't import: the file is not valid JSON.")).toBeInTheDocument();
+      expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
+    });
+  });
+
   describe('re-evaluate all', () => {
     const task = (id: string, title: string, done = false) => ({
       id,

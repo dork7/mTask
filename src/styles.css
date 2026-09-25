@@ -220,3 +220,24 @@ select.badge-select {
   background-position: calc(100% - 13px) 55%, calc(100% - 9px) 55%; background-size: 4px 4px; background-repeat: no-repeat;
 }
 select.badge-select:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* Filter & sort bar. */
+.toolbar { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 10px; }
+@media (max-width: 700px) { .toolbar { grid-template-columns: 1fr 1fr; } .toolbar-search { grid-column: 1 / -1; } }
+.toolbar input, .toolbar select { padding: 10px 14px; border-radius: 980px; font-size: 14px; background-color: var(--card); border-color: transparent; }
+.toolbar select { padding-right: 34px; }
+
+/* Task actions and inline edit. */
+.task-actions { display: flex; gap: 14px; }
+.task-editing { grid-template-columns: 1fr; }
+.task-edit { display: grid; gap: 10px; }
+.task-edit input:not([type='checkbox']), .task-edit textarea { padding: 10px 14px; }
+.task-edit textarea { min-height: 64px; }
+.task-edit-actions { display: flex; align-items: center; gap: 16px; }
+.pill-small { font-size: 14px; padding: 8px 18px; }
+
+/* Backup. */
+.backup { display: grid; gap: 14px; }
+.backup-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.backup-note { margin: 0; font-size: 14px; color: var(--muted); }
+.backup-message { margin: 0; font-size: 14px; font-weight: 600; }

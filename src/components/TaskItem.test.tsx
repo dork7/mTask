@@ -244,4 +244,33 @@ describe('TaskItem', () => {
     );
     expect(screen.getByText(/^Priority:/)).not.toHaveClass('tag');
   });
+
+  it('edits the title and description inline', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(<TaskItem task={makeTask()} onEdit={onEdit} onToggleDone={vi.fn()} onDelete={vi.fn()} onRetry={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Edit title'));
+    await user.type(screen.getByLabelText('Edit title'), '  Buy oat milk ');
+    await user.type(screen.getByLabelText('Edit description'), ' 1L');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onEdit).toHaveBeenCalledWith('1', 'Buy oat milk', '2% 1L');
+    expect(screen.queryByLabelText('Edit title')).not.toBeInTheDocument();
+  });
+
+  it('cancelling an edit changes nothing, and an empty title cannot be saved', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(<TaskItem task={makeTask()} onEdit={onEdit} onToggleDone={vi.fn()} onDelete={vi.fn()} onRetry={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Edit title'));
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
 });

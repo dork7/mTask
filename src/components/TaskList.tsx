@@ -10,6 +10,9 @@ export interface TaskListProps {
   onRetry: (id: string) => void;
   onSetPriority?: (id: string, label: string) => void;
   onSetAnswer?: (id: string, question: string, answer: string) => void;
+  onEdit?: (id: string, title: string, description: string) => void;
+  /** Shown when `tasks` is empty. */
+  emptyText?: string;
 }
 
 export function TaskList({
@@ -21,15 +24,16 @@ export function TaskList({
   onRetry,
   onSetPriority,
   onSetAnswer,
+  onEdit,
+  emptyText = 'No tasks yet.',
 }: TaskListProps) {
   if (tasks.length === 0) {
-    return <p className="card empty">No tasks yet.</p>;
+    return <p className="card empty">{emptyText}</p>;
   }
-  // Newest first; ISO timestamps sort correctly as strings.
-  const sorted = [...tasks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // Rendered in the order given; the caller sorts.
   return (
     <ul className="card task-list">
-      {sorted.map((task) => (
+      {tasks.map((task) => (
         <TaskItem
           key={task.id}
           task={task}
@@ -40,6 +44,7 @@ export function TaskList({
           onRetry={onRetry}
           onSetPriority={onSetPriority}
           onSetAnswer={onSetAnswer}
+          onEdit={onEdit}
         />
       ))}
     </ul>
