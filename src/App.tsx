@@ -252,79 +252,84 @@ function App() {
         )}
         <DownloadProgress progress={progress} />
 
-        <section className="band" id="add" aria-label="Add a task">
-          <h2 className="band-title">Add a task.</h2>
-          <TaskForm onAdd={handleAdd} />
-        </section>
+        <div className="workspace">
+          {/* Left: adding tasks and settings. Right: the task list. */}
+          <div className="workspace-side">
+            <section className="band" id="add" aria-label="Add a task">
+              <h2 className="band-title">Add a task.</h2>
+              <TaskForm onAdd={handleAdd} />
+            </section>
 
-        <section className="band" id="tasks" aria-label="Tasks">
-          <div className="band-head">
-            <h2 className="band-title">Your tasks.</h2>
-            {tasks.length > 0 && (
-              <button
-                type="button"
-                className="pill pill-quiet"
-                onClick={() => void handleReevaluateAll()}
-                disabled={!canClassify || !parsed.ok || reevaluating}
-              >
-                {reevaluating ? 'Re-evaluating…' : 'Re-evaluate all'}
-              </button>
-            )}
+            <section className="band" id="questions" aria-label="Questions settings">
+              <h2 className="band-title">Questions.</h2>
+              <p className="band-sub">Tell the model what to ask about every task.</p>
+              <QuestionsField value={questionsText} onChange={handleQuestionsChange} error={parsed.ok ? undefined : parsed.error} />
+            </section>
+
+            <section className="band" id="backup" aria-label="Backup">
+              <h2 className="band-title">Backup.</h2>
+              <p className="band-sub">Save your tasks and questions to a file, or load them on another device.</p>
+              <div className="card backup">
+                <div className="backup-actions">
+                  <button type="button" className="pill" onClick={handleExport} disabled={tasks.length === 0}>
+                    Export
+                  </button>
+                  <button type="button" className="pill pill-quiet" onClick={() => importInput.current?.click()}>
+                    Import
+                  </button>
+                  <input
+                    ref={importInput}
+                    type="file"
+                    accept="application/json,.json"
+                    aria-label="Import backup file"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) void handleImport(file);
+                    }}
+                  />
+                </div>
+                <p className="backup-note">Importing adds the file's tasks (replacing any with the same id) and its questions.</p>
+                {backupMessage && (
+                  <p role="status" className="backup-message">
+                    {backupMessage}
+                  </p>
+                )}
+              </div>
+            </section>
           </div>
-          <PriorityHeatmap tasks={tasks} />
-          {tasks.length > 0 && <TaskToolbar view={view} onChange={setView} priorityOptions={priorityOptions} />}
-          <TaskList
-            tasks={visibleTasks}
-            emptyText={tasks.length === 0 ? 'No tasks yet.' : 'No tasks match these filters.'}
-            priorityOptions={priorityOptions}
-            answerOptions={answerOptions}
-            onToggleDone={handleToggleDone}
-            onDelete={handleDelete}
-            onRetry={handleRetry}
-            onSetPriority={handleSetPriority}
-            onSetAnswer={handleSetAnswer}
-            onEdit={handleEdit}
-          />
-        </section>
 
-        <section className="band" id="questions" aria-label="Questions settings">
-          <h2 className="band-title">Questions.</h2>
-          <p className="band-sub">Tell the model what to ask about every task.</p>
-          <QuestionsField value={questionsText} onChange={handleQuestionsChange} error={parsed.ok ? undefined : parsed.error} />
-        </section>
-
-        <section className="band" id="backup" aria-label="Backup">
-          <h2 className="band-title">Backup.</h2>
-          <p className="band-sub">Save your tasks and questions to a file, or load them on another device.</p>
-          <div className="card backup">
-            <div className="backup-actions">
-              <button type="button" className="pill" onClick={handleExport} disabled={tasks.length === 0}>
-                Export
-              </button>
-              <button type="button" className="pill pill-quiet" onClick={() => importInput.current?.click()}>
-                Import
-              </button>
-              <input
-                ref={importInput}
-                type="file"
-                accept="application/json,.json"
-                aria-label="Import backup file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (file) void handleImport(file);
-                }}
-              />
+          <section className="band workspace-main" id="tasks" aria-label="Tasks">
+            <div className="band-head">
+              <h2 className="band-title">Your tasks.</h2>
+              {tasks.length > 0 && (
+                <button
+                  type="button"
+                  className="pill pill-quiet"
+                  onClick={() => void handleReevaluateAll()}
+                  disabled={!canClassify || !parsed.ok || reevaluating}
+                >
+                  {reevaluating ? 'Re-evaluating…' : 'Re-evaluate all'}
+                </button>
+              )}
             </div>
-            <p className="backup-note">Importing adds the file's tasks (replacing any with the same id) and its questions.</p>
-            {backupMessage && (
-              <p role="status" className="backup-message">
-                {backupMessage}
-              </p>
-            )}
-          </div>
-        </section>
+            <PriorityHeatmap tasks={tasks} />
+            {tasks.length > 0 && <TaskToolbar view={view} onChange={setView} priorityOptions={priorityOptions} />}
+            <TaskList
+              tasks={visibleTasks}
+              emptyText={tasks.length === 0 ? 'No tasks yet.' : 'No tasks match these filters.'}
+              priorityOptions={priorityOptions}
+              answerOptions={answerOptions}
+              onToggleDone={handleToggleDone}
+              onDelete={handleDelete}
+              onRetry={handleRetry}
+              onSetPriority={handleSetPriority}
+              onSetAnswer={handleSetAnswer}
+              onEdit={handleEdit}
+            />
+          </section>
+        </div>
       </main>
 
       <footer className="footer">Your tasks and their priorities stay in this browser.</footer>
@@ -333,3 +338,4 @@ function App() {
 }
 
 export default App;
+

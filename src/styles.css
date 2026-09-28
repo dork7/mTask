@@ -67,7 +67,7 @@ input, textarea, select, button { font: inherit; color: inherit; letter-spacing:
   border-bottom: 1px solid color-mix(in srgb, var(--hairline) 50%, transparent);
 }
 .nav-inner {
-  max-width: 980px; height: 48px; margin: 0 auto; padding: 0 22px;
+  max-width: 1280px; height: 48px; margin: 0 auto; padding: 0 22px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .nav-brand { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: 0.011em; }
@@ -76,7 +76,7 @@ input, textarea, select, button { font: inherit; color: inherit; letter-spacing:
 .nav-links a:hover { opacity: 1; text-decoration: none; }
 
 /* Sections. */
-main { max-width: 980px; margin: 0 auto; padding: 0 22px 80px; }
+main { max-width: 1280px; margin: 0 auto; padding: 0 22px 80px; }
 .band { padding-top: 64px; display: grid; gap: 24px; }
 .band-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .band-title { margin: 0; font-size: clamp(32px, 5vw, 48px); line-height: 1.08; font-weight: 600; letter-spacing: -0.003em; }
@@ -177,7 +177,7 @@ textarea.questions { min-height: 260px; font-family: ui-monospace, 'SF Mono', Me
 .field-error { margin: 4px 0 0; color: var(--error); font-size: 14px; }
 
 .footer {
-  max-width: 980px; margin: 0 auto; padding: 20px 22px 40px;
+  max-width: 1280px; margin: 0 auto; padding: 20px 22px 40px;
   border-top: 1px solid var(--hairline); font-size: 12px; color: var(--muted);
 }
 
@@ -241,3 +241,16 @@ select.badge-select:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accen
 .backup-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .backup-note { margin: 0; font-size: 14px; color: var(--muted); }
 .backup-message { margin: 0; font-size: 14px; font-weight: 600; }
+
+/* Two columns: add + settings on the left, the task list on the right. Stacks on narrow screens. */
+.workspace { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: 40px; align-items: start; }
+.workspace-side { display: grid; min-width: 0; }
+.workspace-main { min-width: 0; }
+.workspace .band-title { font-size: clamp(28px, 3vw, 40px); }
+.workspace-side .card { padding: 24px; border-radius: 22px; }
+.workspace-side .field-row { grid-template-columns: 1fr 1fr; }
+.workspace-side textarea.questions { min-height: 200px; }
+.workspace .toolbar { grid-template-columns: 2fr repeat(3, minmax(0, 1fr)); }
+@media (max-width: 960px) {
+  .workspace { grid-template-columns: 1fr; gap: 0; }
+}
