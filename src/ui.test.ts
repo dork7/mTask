@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createApp } from './app.ts';
+import { withTestApp } from './testing/app.ts';
 import { navItems, priorities, priority, slot, slots, ui } from './ui.ts';
 
 describe('priorities and slots (AC5, AC6)', () => {
@@ -48,7 +48,9 @@ describe('ui', () => {
     expect(ui).toEqual({ navItems, priorities, slots, priority, slot });
   });
 
-  it('is what the views get as `ui`', () => {
-    expect(createApp().locals.ui).toBe(ui);
+  it('is what the views get as `ui`', async () => {
+    await withTestApp(({ app }) => {
+      expect(app.locals.ui).toBe(ui);
+    });
   });
 });

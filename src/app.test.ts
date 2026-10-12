@@ -1,7 +1,7 @@
 import http from 'node:http';
 import request from 'supertest';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp } from './app.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from './testing/app.ts';
 
 const APP_NAME = 'Task Image AI';
 
@@ -31,7 +31,7 @@ function expectLayout(html: string): void {
 }
 
 async function fetchStylesheet(): Promise<{ href: string; css: string; response: request.Response }> {
-  const app = createApp();
+  const app = testApp.app;
   const page = await request(app).get('/');
   const href = stylesheetHref(page.text);
   const response = await request(app).get(href);
@@ -45,27 +45,34 @@ function splitRoot(css: string): { root: string; rest: string } {
   return { root, rest: css.replace(blocks, '') };
 }
 
+let testApp: TestApp;
+
+beforeEach(() => {
+  testApp = createTestApp();
+});
+
 afterEach(() => {
+  testApp.close();
   vi.restoreAllMocks();
   vi.resetModules();
 });
 
 describe('GET / (AC1)', () => {
   it('returns 200 with an HTML page', async () => {
-    const response = await request(createApp()).get('/');
+    const response = await request(testApp.app).get('/');
 
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
   });
 
   it('renders the shared layout, which carries the app name', async () => {
-    const response = await request(createApp()).get('/');
+    const response = await request(testApp.app).get('/');
 
     expectLayout(response.text);
   });
 
   it('renders the home view inside the layout', async () => {
-    const response = await request(createApp()).get('/');
+    const response = await request(testApp.app).get('/');
 
     expect(mainOf(response.text)).toContain('<h1>Today</h1>');
   });
@@ -112,14 +119,14 @@ describe('base stylesheet (AC2)', () => {
 
 describe('unknown path (AC3)', () => {
   it('returns 404 with an HTML page', async () => {
-    const response = await request(createApp()).get('/no-such-page');
+    const response = await request(testApp.app).get('/no-such-page');
 
     expect(response.status).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
   });
 
   it('renders the not-found view in the same layout as the home page', async () => {
-    const app = createApp();
+    const app = testApp.app;
     const home = await request(app).get('/');
     const missing = await request(app).get('/no-such-page');
 
@@ -129,7 +136,7 @@ describe('unknown path (AC3)', () => {
   });
 
   it('answers any method, not only GET', async () => {
-    const response = await request(createApp()).post('/no-such-page');
+    const response = await request(testApp.app).post('/no-such-page');
 
     expect(response.status).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
@@ -144,9 +151,22 @@ describe('app without a listener (AC4)', () => {
     const listen = vi.spyOn(http.Server.prototype, 'listen');
 
     const fresh = await import('./app.ts');
-    const app = fresh.createApp();
+    const app = fresh.createApp({ db: testApp.db, uploadsDir: testApp.uploadsDir });
 
     expect(app).toBeTypeOf('function');
     expect(listen).not.toHaveBeenCalled();
+  });
+});
+
+describe('the uploads folder of an app (AC11)', () => {
+  it('must be an absolute path, so nothing is stored under the working folder', async () => {
+    const { createApp } = await import('./app.ts');
+
+    expect(() => createApp({ db: testApp.db, uploadsDir: 'uploads' })).toThrow(
+      'The uploads folder must be an absolute path, got "uploads"',
+    );
+    expect(() => createApp({ db: testApp.db, uploadsDir: '' })).toThrow(
+      'The uploads folder must be an absolute path, got ""',
+    );
   });
 });

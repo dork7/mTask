@@ -337,7 +337,7 @@ describe('existing pages in the new layout (AC7)', () => {
     expect(one(document, '[data-theme-toggle]').tagName).toBe('BUTTON');
   });
 
-  it.each(['/timeline', '/tasks', '/more', '/add'])(
+  it.each(['/timeline', '/tasks', '/more'])(
     '%s answers with the not-found page until its job builds it',
     async (path) => {
       const { status, document } = await getPage(path);

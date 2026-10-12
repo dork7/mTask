@@ -1,15 +1,36 @@
+import path from 'node:path';
 import express, { type Express } from 'express';
+import type { Database } from './db/database.ts';
 import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
+import { createAddRouter } from './routes/add.ts';
 import { homeRouter } from './routes/home.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
+import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
 import { ui } from './ui.ts';
 
+/** What the app is built from. `server.ts` supplies the real ones, tests their own. */
+export interface AppDeps {
+  /** An open database. The caller opens it and closes it. */
+  db: Database;
+  /** The folder uploaded photos are stored in, as an absolute path. It may not exist yet. */
+  uploadsDir: string;
+}
+
 /**
- * Builds the Express app. It never listens and never reads the environment:
- * `server.ts` does both, and tests drive the app returned here directly.
+ * Builds the Express app on an open database and an uploads folder. It never listens
+ * and never reads the environment: `server.ts` does both, and tests drive the app
+ * returned here directly. The caller opens the database and closes it.
+ *
+ * Throws when `uploadsDir` is not absolute, because a relative path would land in
+ * whatever folder the process was started from. The folder is not created here; it is
+ * created when a photo is stored.
  */
-export function createApp(): Express {
+export function createApp(deps: AppDeps): Express {
+  if (!path.isAbsolute(deps.uploadsDir)) {
+    throw new Error(`The uploads folder must be an absolute path, got "${deps.uploadsDir}"`);
+  }
+
   const app = express();
 
   app.set('view engine', 'ejs');
@@ -18,7 +39,20 @@ export function createApp(): Express {
   app.locals.ui = ui;
 
   app.use(express.static(publicDir));
+  // Stored photos. The bytes of an upload are never inspected, so the browser is told
+  // to keep to the type the extension gives.
+  app.use(
+    UPLOADS_URL_PATH,
+    express.static(deps.uploadsDir, {
+      index: false,
+      redirect: false,
+      setHeaders(res) {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+      },
+    }),
+  );
   app.use(homeRouter);
+  app.use(createAddRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {

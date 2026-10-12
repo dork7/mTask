@@ -1,14 +1,24 @@
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /*
  * `server.ts` listens as soon as it is imported. These tests import it with
- * `createApp` replaced by an app whose `listen` is a spy, so no port is opened,
- * and with `loadEnv` replaced by a spy, so a developer's own `.env` cannot change
- * the result. `getPort` stays the real one.
+ * `createApp` replaced by a spy that returns an app whose `listen` is a spy, so no
+ * port is opened, with `openDatabase` replaced by a spy that returns a stand-in, so
+ * no database is opened, and with `loadEnv` replaced by a spy, so a developer's own
+ * `.env` cannot change the result. `getPort`, `getDatabasePath` and `getUploadsDir`
+ * stay the real ones.
  */
 
 const listen = vi.fn();
 const loadEnv = vi.fn();
+
+/** Stands in for the open database. `server.ts` only hands it on. */
+const database = { name: 'the database openDatabase returned' };
+const openDatabase = vi.fn((_file: string) => database);
+const createApp = vi.fn((_deps: { db: unknown; uploadsDir: string }) => ({ listen }));
 
 async function startServer(): Promise<void> {
   await import('./server.ts');
@@ -16,7 +26,8 @@ async function startServer(): Promise<void> {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.doMock('./app.ts', () => ({ createApp: () => ({ listen }) }));
+  vi.doMock('./app.ts', () => ({ createApp }));
+  vi.doMock('./db/database.ts', () => ({ openDatabase }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
     return { ...actual, loadEnv };
@@ -25,6 +36,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.doUnmock('./app.ts');
+  vi.doUnmock('./db/database.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -104,5 +116,60 @@ describe('server (AC4)', () => {
 
     expect(() => onListening(inUse)).toThrow(inUse);
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+describe('server: the database and the uploads folder (AC11)', () => {
+  it('opens the database once, at the configured path, before it listens', async () => {
+    const folder = path.join(tmpdir(), `mtask-server-test-${process.pid}`);
+    const file = path.join(folder, 'app.db');
+    vi.stubEnv('DATABASE_PATH', file);
+
+    await startServer();
+
+    expect(openDatabase).toHaveBeenCalledTimes(1);
+    expect(openDatabase.mock.calls[0]).toEqual([file]);
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+    expect(existsSync(folder)).toBe(false);
+  });
+
+  it('reads the database path after it has loaded .env', async () => {
+    const file = path.join(tmpdir(), `mtask-server-test-${process.pid}`, 'from-env-file.db');
+    vi.stubEnv('DATABASE_PATH', undefined);
+    // Stands in for a .env file that holds DATABASE_PATH.
+    loadEnv.mockImplementation(() => {
+      vi.stubEnv('DATABASE_PATH', file);
+    });
+
+    await startServer();
+
+    expect(openDatabase).toHaveBeenCalledTimes(1);
+    expect(openDatabase.mock.calls[0]).toEqual([file]);
+  });
+
+  it('builds the app on that database and the configured uploads folder', async () => {
+    const uploadsDir = path.join(tmpdir(), `mtask-server-test-${process.pid}`, 'uploads');
+    vi.stubEnv('UPLOADS_DIR', uploadsDir);
+
+    await startServer();
+
+    expect(createApp).toHaveBeenCalledTimes(1);
+    expect(createApp.mock.calls[0]).toStrictEqual([{ db: database, uploadsDir }]);
+    // The very object openDatabase returned, not a copy of it.
+    expect(createApp.mock.calls[0][0].db).toBe(openDatabase.mock.results[0].value);
+    expect(existsSync(uploadsDir)).toBe(false);
+  });
+
+  it('stops before it listens when the database cannot be opened', async () => {
+    const failure = new Error('unable to open database file');
+    openDatabase.mockImplementation(() => {
+      throw failure;
+    });
+
+    await expect(startServer()).rejects.toBe(failure);
+
+    expect(createApp).not.toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
   });
 });

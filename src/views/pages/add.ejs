@@ -1,0 +1,36 @@
+<%#
+  The Add screen, with its one tab, Photo.
+  addPage: { error, savedPhoto }
+  `error` is why the last post was refused, or null. `savedPhoto` is the image path of
+  the photo the last post stored, or null. Both are always present.
+  The preview and Retake are shown by /js/add-photo.js; without it the form still posts.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Add task' } }) -%>
+
+<div class="tabs" role="tablist" aria-label="Ways to add a task">
+  <%- include('../partials/button', { button: {
+    label: 'Photo',
+    variant: 'ghost',
+    attrs: { role: 'tab', id: 'tab-photo', 'aria-selected': 'true', 'aria-controls': 'panel-photo' },
+  } }) -%>
+</div>
+
+<div class="tab-panel" role="tabpanel" id="panel-photo" aria-labelledby="tab-photo">
+<% if (addPage.error) { -%>
+  <p class="notice notice--error" role="alert"><%= addPage.error %></p>
+<% } -%>
+<% if (addPage.savedPhoto) { -%>
+  <p class="notice" role="status">Photo saved.</p>
+  <img class="photo" src="<%= addPage.savedPhoto %>" alt="The photo you saved">
+<% } -%>
+  <form class="photo-form" method="post" action="/add/photo" enctype="multipart/form-data">
+    <label class="photo-form__label" for="photo-input">Take or choose a photo</label>
+    <input class="photo-form__input" id="photo-input" type="file" name="photo" accept="image/*" capture="environment" required data-photo-input>
+    <img class="photo" alt="Preview of the photo you chose" data-photo-preview hidden>
+    <div class="photo-form__actions">
+      <%- include('../partials/button', { button: { label: 'Retake', variant: 'ghost', attrs: { 'data-photo-retake': '', hidden: '' } } }) -%>
+      <%- include('../partials/button', { button: { label: 'Upload photo', type: 'submit' } }) -%>
+    </div>
+  </form>
+</div>
+<script src="/js/add-photo.js" defer></script>
