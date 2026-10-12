@@ -29,7 +29,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.resetModules();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe('server (AC4)', () => {
@@ -58,6 +58,28 @@ describe('server (AC4)', () => {
 
     expect(loadEnv).toHaveBeenCalledTimes(1);
     expect(loadEnv.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+  });
+
+  it('reads the port after it has loaded .env', async () => {
+    vi.stubEnv('PORT', undefined);
+    // Stands in for a .env file that holds PORT=4321.
+    loadEnv.mockImplementation(() => {
+      vi.stubEnv('PORT', '4321');
+    });
+
+    await startServer();
+
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(listen.mock.calls[0][0]).toBe(4321);
+  });
+
+  it('loads the default file, .env at the repo root', async () => {
+    vi.stubEnv('PORT', undefined);
+
+    await startServer();
+
+    expect(loadEnv).toHaveBeenCalledTimes(1);
+    expect(loadEnv.mock.calls[0]).toEqual([]);
   });
 
   it('announces the URL once it is listening', async () => {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PORT, getPort, loadEnv } from './config.ts';
+import { rootDir } from './paths.ts';
 
 describe('getPort (AC4)', () => {
   it('is 3000 when PORT is not set', () => {
@@ -18,7 +19,7 @@ describe('getPort (AC4)', () => {
     expect(getPort({ PORT: '4123' })).toBe(4123);
   });
 
-  it.each(['abc', '0', '70000', '80.5'])('throws for PORT=%s and names the value', (value) => {
+  it.each(['abc', '0', '70000', '80.5', '1e3', '0x50'])('throws for PORT=%s and names the value', (value) => {
     expect(() => getPort({ PORT: value })).toThrow(value);
   });
 });
@@ -37,6 +38,7 @@ describe('loadEnv (AC4)', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
     rmSync(dir, { recursive: true, force: true });
   });
@@ -65,5 +67,15 @@ describe('loadEnv (AC4)', () => {
 
   it('rethrows an error that is not a missing file', () => {
     expect(() => loadEnv(dir)).toThrow();
+  });
+
+  it('loads .env at the repo root when it is given no file', () => {
+    // The spy takes the place of the real call, so no .env on this machine is read.
+    const loadEnvFile = vi.spyOn(process, 'loadEnvFile').mockImplementation(() => {});
+
+    loadEnv();
+
+    expect(loadEnvFile).toHaveBeenCalledTimes(1);
+    expect(loadEnvFile.mock.calls[0]).toEqual([path.join(rootDir, '.env')]);
   });
 });

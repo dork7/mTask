@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseEnv } from 'node:util';
@@ -27,6 +27,16 @@ function envNamesRead(): Set<string> {
     }
   }
   return names;
+}
+
+/** How long the plain-Node child may take to load the app and exit. It needs about 0.1 s. */
+const LOAD_TIMEOUT_MS = 10_000;
+
+/** Why a child process did not exit with code 0: it was stopped, or what it wrote to stderr. */
+function describeFailure(result: SpawnSyncReturns<string>): string {
+  if (result.error) return `the child process did not finish: ${result.error.message}`;
+  if (result.signal) return `the child process was stopped by ${result.signal}`;
+  return result.stderr;
 }
 
 describe('environment files (AC5)', () => {
@@ -74,14 +84,21 @@ describe('project commands (AC6)', () => {
     expect(facts).toContain('`yarn dev`');
   });
 
-  it('plain Node, the runtime of the dev command, can load the app', () => {
-    const script = "const { createApp } = await import('./src/app.ts'); createApp();";
-    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
-      cwd: rootDir,
-      encoding: 'utf8',
-    });
+  // The child is stopped after LOAD_TIMEOUT_MS, so a createApp() that keeps the
+  // process alive fails this test instead of hanging the suite. spawnSync blocks,
+  // and Vitest cannot interrupt it; the test's own timeout only has to be longer.
+  it(
+    'plain Node, the runtime of the dev command, can load the app',
+    () => {
+      const script = "const { createApp } = await import('./src/app.ts'); createApp();";
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        timeout: LOAD_TIMEOUT_MS,
+      });
 
-    expect(result.stderr).toBe('');
-    expect(result.status).toBe(0);
-  });
+      expect(result.status, describeFailure(result)).toBe(0);
+    },
+    LOAD_TIMEOUT_MS + 5_000,
+  );
 });
