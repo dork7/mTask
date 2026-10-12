@@ -39,6 +39,21 @@ export function getPort(env: NodeJS.ProcessEnv = process.env): number {
   return port;
 }
 
+/** SQLite's name for a database that lives in memory and is gone when it is closed. */
+const MEMORY_DATABASE = ':memory:';
+
+/**
+ * The file the database lives in: `DATABASE_PATH`, or `data/app.db` when it is unset
+ * or blank. A relative value starts at the repo root, never at the working folder.
+ * `:memory:` is returned as it is.
+ */
+export function getDatabasePath(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env.DATABASE_PATH?.trim() ?? '';
+  if (raw === '') return path.join(rootDir, 'data', 'app.db');
+  if (raw === MEMORY_DATABASE) return raw;
+  return path.resolve(rootDir, raw);
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
