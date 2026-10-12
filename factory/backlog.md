@@ -8,7 +8,7 @@ Source: `docs/plan.md` (backend tasks 1-17, UI tasks U1-U12) and `docs/mockUps.h
 The unchecked items are the backlog the dashboard shows, in the order they run.
 `/factory next` starts the first one and ticks it.
 
-- [ ] 001-scaffold: Express + EJS server, test runner and project commands
+- [x] 001-scaffold: Express + EJS server, test runner and project commands
 - [ ] 002-design-system: design tokens, app shell and the style-guide page
 - [ ] 003-data-model: tasks, sources and settings tables with CRUD helpers
 - [ ] 004-photo-upload: Add screen with the Photo tab and image upload

@@ -1,0 +1,66 @@
+/*
+ * Base stylesheet. Every color is a variable declared on :root; no rule below the
+ * :root block holds a color literal. Names and light values come from
+ * docs/mockUps.html.
+ */
+
+:root {
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --text: #14171c;
+  --muted: #5d6675;
+  --border: #e1e4ea;
+  --accent: #4f46e5;
+  --accent-text: #ffffff;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+}
+
+.site-header a {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.page {
+  max-width: 720px;
+  margin: 20px auto 48px;
+  padding: 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.page > * + * {
+  margin-top: 10px;
+}
+
+h1 {
+  font-size: 22px;
+}
+
+.muted {
+  color: var(--muted);
+}

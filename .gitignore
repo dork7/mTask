@@ -2,6 +2,7 @@ node_modules
 dist
 .superpowers
 coverage
+.env
 .claude
 factory/*.jsonl
 factory/board.json
