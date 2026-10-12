@@ -3,3 +3,5 @@ dist
 .superpowers
 coverage
 .claude
+factory/*.jsonl
+factory/board.json

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task Image AI - Mockups</title>
+<style>
+:root{
+  --bg:#eef0f4; --surface:#ffffff; --surface-2:#f4f5f8; --text:#14171c; --muted:#5d6675; --border:#e1e4ea;
+  --accent:#4f46e5; --accent-text:#ffffff;
+  --urgent:#d93025; --high:#e8710a; --medium:#1a73e8; --low:#6b7280;
+  --urgent-bg:#fde8e6; --high-bg:#fdeedc; --medium-bg:#e3eefd; --low-bg:#eceef1;
+  --slot-morning:#fff6dd; --slot-afternoon:#e8f3ff; --slot-evening:#f1ebff; --slot-night:#e6e9f7;
+  --radius:14px; --radius-sm:8px;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e12; --surface:#171a21; --surface-2:#1f232c; --text:#eceef3; --muted:#9aa3b2; --border:#2b303b;
+  --accent:#8b86ff; --accent-text:#0c0e12;
+  --urgent:#ff6b5e; --high:#ffa24d; --medium:#6ea8ff; --low:#a0a7b4;
+  --urgent-bg:#3a1c1a; --high-bg:#3a2a16; --medium-bg:#18283f; --low-bg:#262a32;
+  --slot-morning:#2a2614; --slot-afternoon:#16222f; --slot-evening:#241d35; --slot-night:#1c2033;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0e12; --surface:#171a21; --surface-2:#1f232c; --text:#eceef3; --muted:#9aa3b2; --border:#2b303b;
+    --accent:#8b86ff; --accent-text:#0c0e12;
+    --urgent:#ff6b5e; --high:#ffa24d; --medium:#6ea8ff; --low:#a0a7b4;
+    --urgent-bg:#3a1c1a; --high-bg:#3a2a16; --medium-bg:#18283f; --low-bg:#262a32;
+    --slot-morning:#2a2614; --slot-afternoon:#16222f; --slot-evening:#241d35; --slot-night:#1c2033;
+  }
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:20px 16px 48px}
+.top{max-width:1180px;margin:0 auto 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.top h1{font-size:20px}
+.top p{color:var(--muted);font-size:13px}
+.toggle{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font:inherit;cursor:pointer;min-height:44px}
+.screens{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+figure{display:flex;flex-direction:column;align-items:center;gap:10px}
+figcaption{font-size:13px;color:var(--muted);font-weight:600}
+.phone{width:360px;height:720px;background:var(--surface);border:1px solid var(--border);border-radius:32px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.status{height:28px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12px;color:var(--muted);flex:none}
+.screen{flex:1;overflow:hidden;padding:4px 16px 12px;display:flex;flex-direction:column;gap:12px;position:relative}
+.tabbar{flex:none;height:64px;border-top:1px solid var(--border);background:var(--surface);display:grid;grid-template-columns:1fr 1fr auto 1fr 1fr;align-items:center;padding:0 8px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);min-height:44px;justify-content:center}
+.tab.active{color:var(--accent);font-weight:700}
+.tab .ic{font-size:18px}
+.add{width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;font-size:28px;margin:-18px 8px 0;box-shadow:0 4px 12px rgba(79,70,229,.4)}
+h2{font-size:22px}
+.sub{color:var(--muted);font-size:13px}
+.card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.b-urgent{background:var(--urgent-bg);color:var(--urgent)}
+.b-high{background:var(--high-bg);color:var(--high)}
+.b-medium{background:var(--medium-bg);color:var(--medium)}
+.b-low{background:var(--low-bg);color:var(--low)}
+.btn{background:var(--accent);color:var(--accent-text);border:0;border-radius:var(--radius-sm);padding:10px 16px;font:inherit;font-weight:700;min-height:44px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1}
+
+/* Today */
+.next .title{font-size:18px;font-weight:700;margin:6px 0 2px}
+.ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--accent) 0 31%, var(--border) 0);display:grid;place-items:center;flex:none}
+.ring span{width:50px;height:50px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:12px;font-weight:700}
+.banner{background:var(--urgent-bg);color:var(--urgent);border-radius:var(--radius-sm);padding:10px 12px;font-weight:600;font-size:13px;display:flex;justify-content:space-between}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.d-urgent{background:var(--urgent)}.d-high{background:var(--high)}.d-medium{background:var(--medium)}.d-low{background:var(--low)}
+.time{font-size:12px;color:var(--muted);white-space:nowrap}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quick div{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 4px;text-align:center;font-size:12px;font-weight:600;min-height:44px}
+
+/* Review */
+.photo{background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 8px,var(--border) 8px,var(--border) 9px);border-radius:var(--radius-sm);height:64px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.field{width:100%;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:8px 10px;font:inherit;font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);background:var(--surface)}
+.chip.on{border-color:transparent;font-weight:700}
+.chip.on.urgent{background:var(--urgent-bg);color:var(--urgent)}
+.chip.on.high{background:var(--high-bg);color:var(--high)}
+.chip.on.medium{background:var(--medium-bg);color:var(--medium)}
+.chip.on.low{background:var(--low-bg);color:var(--low)}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface)}
+.stepper b{padding:6px 12px;font-size:16px}
+.stepper span{padding:6px 10px;font-size:13px;font-weight:700;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.warn{color:var(--high);font-size:11px;font-weight:700}
+.land{font-size:12px;color:var(--muted)}
+.sticky{margin-top:auto;display:flex;gap:8px}
+.sticky .btn{flex:1}
+
+/* Timeline */
+.days{display:flex;justify-content:space-between;align-items:center}
+.days .nav{border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;min-height:36px}
+.tl{position:relative;height:572px;margin-left:44px;flex:none}
+.tl-wrap{overflow:hidden;flex:1;position:relative}
+.band{position:absolute;left:0;right:0;border-top:1px dashed var(--border);padding:2px 6px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.band.m{background:var(--slot-morning)}.band.a{background:var(--slot-afternoon)}.band.e{background:var(--slot-evening)}.band.n{background:var(--slot-night)}
+.hour{position:absolute;left:-44px;width:38px;text-align:right;font-size:10px;color:var(--muted);transform:translateY(-6px)}
+.blk{position:absolute;border-radius:6px;padding:3px 6px;font-size:11px;font-weight:700;overflow:hidden;border-left:4px solid;line-height:1.2}
+.k-urgent{background:var(--urgent-bg);border-color:var(--urgent);color:var(--urgent)}
+.k-high{background:var(--high-bg);border-color:var(--high);color:var(--high)}
+.k-medium{background:var(--medium-bg);border-color:var(--medium);color:var(--medium)}
+.conflict{background-image:repeating-linear-gradient(45deg,transparent 0 5px,rgba(217,48,37,.28) 5px 7px)}
+.now{position:absolute;left:-6px;right:0;height:2px;background:var(--urgent);z-index:3}
+.now::before{content:"";position:absolute;left:0;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--urgent)}
+.legend{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Task Image AI: key screens</h1>
+    <p>Static mockups of Today, Review and Timeline. Sample data, not final design.</p>
+  </div>
+  <button class="toggle" id="theme" aria-label="Toggle light and dark theme">Toggle theme</button>
+</div>
+
+<div class="screens">
+
+  <!-- TODAY -->
+  <figure>
+    <div class="phone" aria-label="Today screen">
+      <div class="status"><span>1:36</span><span>5G ▮▮▮</span></div>
+      <div class="screen">
+        <div>
+          <h2>Today</h2>
+          <div class="sub">Monday, 12 Oct</div>
+        </div>
+        <div class="card next">
+          <div class="row between">
+            <span class="sub">Next up · 2:00 PM</span>
+            <span class="badge b-urgent">▲ Urgent</span>
+          </div>
+          <div class="title">Submit expense report</div>
+          <div class="sub">Admin · about 45 min</div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn grow">Start</button>
+            <button class="btn ghost">Snooze</button>
+          </div>
+        </div>
+        <div class="card row">
+          <div class="ring"><span>31%</span></div>
+          <div class="grow">
+            <b>75 of 240 min done</b>
+            <div class="sub">2 of 5 tasks finished</div>
+          </div>
+        </div>
+        <div class="banner"><span>2 overdue tasks</span><span>Review →</span></div>
+        <div>
+          <div class="sub" style="font-weight:700;margin-bottom:2px">LATER TODAY</div>
+          <div class="item"><span class="dot d-high"></span><div class="grow"><b>Review PR #214</b><div class="time">Coding · 60 min</div></div><span class="time">4:00 PM</span></div>
+          <div class="item"><span class="dot d-medium"></span><div class="grow"><b>Weekly groceries</b><div class="time">Shopping · 40 min · repeats</div></div><span class="time">8:00 PM</span></div>
+        </div>
+        <div class="quick"><div>📷<br>Photo</div><div>🎤<br>Voice</div><div>⌨️<br>Type</div></div>
+      </div>
+      <nav class="tabbar">
+        <div class="tab active"><span class="ic">◉</span>Today</div>
+        <div class="tab"><span class="ic">▤</span>Timeline</div>
+        <div class="add" aria-label="Add task">+</div>
+        <div class="tab"><span class="ic">☰</span>Tasks</div>
+        <div class="tab"><span class="ic">⋯</span>More</div>
+      </nav>
+    </div>
+    <figcaption>Today: what should I do now?</figcaption>
+  </figure>
+
+  <!-- REVIEW -->
+  <figure>
+    <div class="phone" aria-label="Review screen">
+      <div class="status"><span>1:36</span><span>5G ▮▮▮</span></div>
+      <div class="screen">
+        <div class="row between">
+          <h2>Review 3 tasks</h2>
+          <span class="sub">Nothing saved yet</span>
+        </div>
+        <div class="photo">whiteboard.jpg · tap to expand</div>
+
+        <div class="card">
+          <input class="field" value="Finish login bug fix" aria-label="Task title">
+          <div class="row between" style="margin-top:8px">
+            <div class="stepper"><b>−</b><span>90 min</span><b>+</b></div>
+            <span class="land">→ Tomorrow 9:00 AM</span>
+          </div>
+          <div class="chips" style="margin-top:8px">
+            <span class="chip">Low</span><span class="chip">Med</span><span class="chip on high">High</span><span class="chip">Urgent</span>
+            <span class="chip">Morning</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <input class="field" value="Buy milk, eggs, bread" aria-label="Task title">
+          <div class="row between" style="margin-top:8px">
+            <div class="stepper"><b>−</b><span>40 min</span><b>+</b></div>
+            <span class="land">→ Today 8:00 PM</span>
+          </div>
+          <div class="chips" style="margin-top:8px">
+            <span class="chip">Low</span><span class="chip on medium">Med</span><span class="chip">High</span><span class="chip">Urgent</span>
+            <span class="chip">8 PM</span><span class="chip">↻ Weekly</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><span class="warn">⚠ Low confidence</span><span class="sub">Remove ✕</span></div>
+          <input class="field" value="Call the bank" aria-label="Task title" style="margin-top:6px">
+          <div class="row between" style="margin-top:8px">
+            <div class="stepper"><b>−</b><span>15 min</span><b>+</b></div>
+            <span class="land">→ Today 2:30 PM</span>
+          </div>
+        </div>
+
+        <div class="sticky">
+          <button class="btn ghost">Discard</button>
+          <button class="btn">Confirm all (3)</button>
+        </div>
+      </div>
+    </div>
+    <figcaption>Review: confirm or tweak before saving</figcaption>
+  </figure>
+
+  <!-- TIMELINE -->
+  <figure>
+    <div class="phone" aria-label="Timeline screen">
+      <div class="status"><span>1:36</span><span>5G ▮▮▮</span></div>
+      <div class="screen">
+        <div class="days">
+          <span class="nav">‹</span>
+          <div style="text-align:center"><b>Today · 12 Oct</b><div class="legend">▲ urgent · ● high · ■ medium</div></div>
+          <span class="nav">›</span>
+        </div>
+        <div class="tl-wrap">
+          <div class="tl">
+            <div class="band m" style="top:0;height:132px">Morning</div>
+            <div class="band a" style="top:132px;height:220px">Afternoon</div>
+            <div class="band e" style="top:352px;height:132px">Evening</div>
+            <div class="band n" style="top:484px;height:88px">8 PM slot</div>
+
+            <div class="hour" style="top:0">9 AM</div>
+            <div class="hour" style="top:132px">12 PM</div>
+            <div class="hour" style="top:264px">3 PM</div>
+            <div class="hour" style="top:396px">6 PM</div>
+            <div class="hour" style="top:484px">8 PM</div>
+
+            <div class="blk k-high" style="top:0;height:66px;left:70px;right:6px">Fix login bug<br><span style="font-weight:500">9:00–10:30 · done</span></div>
+            <div class="blk k-urgent" style="top:220px;height:33px;left:70px;width:calc(50% - 40px)">▲ Expense report</div>
+            <div class="blk k-high conflict" style="top:242px;height:24px;left:calc(50% + 34px);right:6px">Call bank ⚠</div>
+            <div class="blk k-high" style="top:308px;height:44px;left:70px;right:6px">Review PR #214<br><span style="font-weight:500">4:00–5:00</span></div>
+            <div class="blk k-medium" style="top:484px;height:29px;left:70px;right:6px">Weekly groceries · 8:00</div>
+
+            <div class="now" style="top:202px"></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabbar">
+        <div class="tab"><span class="ic">◉</span>Today</div>
+        <div class="tab active"><span class="ic">▤</span>Timeline</div>
+        <div class="add" aria-label="Add task">+</div>
+        <div class="tab"><span class="ic">☰</span>Tasks</div>
+        <div class="tab"><span class="ic">⋯</span>More</div>
+      </nav>
+    </div>
+    <figcaption>Timeline: slot bands, now line, conflict hatching</figcaption>
+  </figure>
+
+</div>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var btn = document.getElementById('theme');
+  function current(){
+    var t = root.getAttribute('data-theme');
+    if (t) return t;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch(e){}
+  });
+  try {
+    var saved = localStorage.getItem('theme');
+    if (saved) root.setAttribute('data-theme', saved);
+  } catch(e){}
+})();
+</script>
+</body>
+</html>

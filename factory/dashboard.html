@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software factory</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f4f0; --card: #fff; --line: #e2e0d9; --text: #1d1c1a; --muted: #75726a;
+    --pass: #1f7d50; --changes: #c0392b; --on: #fff; --human: #c97800; --human-bg: #fff4dc;
+    --series: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --card: #1f1f1d; --line: #383733; --text: #edece7; --muted: #96938b;
+      --pass: #46b983; --changes: #ec7b6b; --on: #111; --human: #f0a530; --human-bg: #33280f;
+      --series: #3987e5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  code, pre, .mono, .files button { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .muted { color: var(--muted); }
+
+  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 24px 4px; }
+  h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  .live { font-size: 12px; color: var(--muted); }
+  .live::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--muted); }
+  .live.ok::before { background: var(--pass); }
+  .live.off::before { background: var(--changes); }
+  #empty { margin: 0; padding: 4px 24px; color: var(--muted); }
+
+  /* The board: one column per stage of the loop. */
+  .board { display: grid; grid-template-columns: repeat(9, minmax(150px, 1fr)); gap: 12px; padding: 16px 24px 32px; overflow-x: auto; align-items: start; }
+  .col { border-top: 2px solid var(--line); padding-top: 8px; }
+  .col h2 { display: flex; justify-content: space-between; margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .col h2 span { color: var(--muted); font-weight: 400; }
+  .col .who { margin: 2px 0 10px; font-size: 12px; color: var(--muted); }
+  .col.needs-human { border-top-color: var(--human); }
+  .col.needs-human h2 { color: var(--human); }
+  .slot { height: 40px; border: 1px dashed var(--line); border-radius: 8px; }
+
+  .card { display: block; width: 100%; margin-bottom: 8px; padding: 10px 12px; text-align: left; font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .card:hover, .card:focus-visible { border-color: var(--muted); outline: none; }
+  .card > span { display: block; }
+  .card .id { font-size: 11px; color: var(--muted); }
+  .card .feature { margin: 2px 0 6px; font-weight: 500; }
+  .card .status, .card .note, .card .tok { font-size: 12px; color: var(--muted); }
+  .card.merged { opacity: .7; }
+  /* A backlog item is not a job yet: nothing to open. */
+  .card.waiting, .card.waiting:hover { border-style: dashed; border-color: var(--line); cursor: default; }
+  .card.needs-human { background: var(--human-bg); border-color: var(--human); border-left-width: 4px; }
+  .card.needs-human .status { color: var(--human); font-weight: 600; }
+  .card.needs-human .note { color: var(--text); }
+
+  /* A ticket's place in the loop: one cell per step, filled as steps are finished. */
+  .meter { display: flex; gap: 2px; margin: 6px 0; }
+  .card > .meter { display: flex; }
+  .meter i { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--series) 20%, transparent); }
+  .meter i.done { background: var(--series); }
+  .meter i.now { background: color-mix(in srgb, var(--series) 55%, transparent); }
+
+  /* Every ticket in one table: where it is in the loop and what it has cost. */
+  .tickets { padding: 0 24px 28px; }
+  .ktable { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 12px; }
+  .ktable th, .ktable td { padding: 6px 14px 6px 0; text-align: left; vertical-align: top; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  .ktable th { font-weight: 600; color: var(--muted); }
+  .ktable th:nth-child(n+5):nth-child(-n+8), .ktable td:nth-child(n+5):nth-child(-n+8) { text-align: right; font-variant-numeric: tabular-nums; }
+  .ktable th:last-child, .ktable td:last-child { padding-right: 0; }
+  .move { padding: 1px 9px; font: inherit; font-size: 11px; color: inherit; white-space: nowrap; background: none; border: 1px solid var(--muted); border-radius: 999px; cursor: pointer; }
+  .move:hover, .move:focus-visible { border-color: var(--text); outline: none; }
+  #kreq { white-space: pre-line; }
+  .ktable .task { min-width: 220px; max-width: 440px; white-space: normal; }
+  .ktable .queued td { color: var(--muted); }
+  .ktable tfoot td { font-weight: 600; border-bottom: 0; }
+  .prog { display: inline-flex; align-items: center; gap: 8px; }
+  .prog .meter { width: 96px; margin: 0; }
+  .link { padding: 0; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+  .link:hover, .link:focus-visible { text-decoration-color: currentColor; outline: none; }
+
+  /* One row of chips per review round. */
+  .card .round { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
+  .rn { width: 18px; font-size: 10px; color: var(--muted); }
+  .chip { padding: 1px 7px; font-size: 11px; border: 1px dashed var(--line); border-radius: 999px; color: var(--muted); }
+  .chip.pass { background: var(--pass); border: 1px solid var(--pass); color: var(--on); }
+  .chip.changes { background: var(--changes); border: 1px solid var(--changes); color: var(--on); }
+  .chip.pass::after { content: " ✓"; }
+  .chip.changes::after { content: " ✗"; }
+  .round.active .chip.pending { border-color: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* Tokens: one filter row, stat tiles, a bar per agent, and the same numbers as a table. */
+  .tokens { padding: 0 24px 40px; }
+  .thead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; padding-top: 8px; border-top: 2px solid var(--line); }
+  .thead h2 { margin: 0 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .thead label, .thead .last, .tnote { font-size: 12px; color: var(--muted); }
+  .thead select { margin-left: 4px; padding: 2px 6px; font: inherit; font-size: 12px; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
+  .thead .last { margin-left: auto; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0 12px; }
+  .tile, .chart { background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  .tile { padding: 10px 12px; }
+  .tile .label { display: block; font-size: 12px; color: var(--muted); }
+  .tile .value { display: block; margin-top: 2px; font-size: 24px; font-weight: 600; }
+  .chart { margin: 0 0 12px; padding: 12px 16px; }
+  .chart figcaption { margin-bottom: 8px; font-weight: 500; }
+  .bar { display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 10px; padding: 5px 0; border-radius: 4px; outline: none; }
+  .bar:hover, .bar:focus-visible { background: var(--bg); }
+  .bar .name { font-size: 12px; text-align: right; color: var(--muted); overflow-wrap: anywhere; }
+  .bar .track { display: flex; align-items: center; gap: 6px; min-width: 0; border-left: 1px solid var(--line); }
+  .bar .fill { flex: 0 0 auto; height: 14px; min-width: 2px; background: var(--series); border-radius: 0 4px 4px 0; }
+  .bar:hover .fill, .bar:focus-visible .fill { filter: brightness(1.15); }
+  .bar .val, .ttable td, .tip div span:last-child { font-variant-numeric: tabular-nums; }
+  .bar .val { font-size: 12px; }
+  .tscroll { overflow-x: auto; }
+  .ttable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ttable th, .ttable td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  .ttable th { font-weight: 600; color: var(--muted); }
+  .ttable th:nth-child(-n+2), .ttable td:nth-child(-n+2) { text-align: left; }
+  .ttable tfoot td { font-weight: 600; border-bottom: 0; }
+  .tnote { margin: 10px 0 0; }
+  .tip { position: fixed; z-index: 10; min-width: 190px; padding: 8px 10px; font-size: 12px; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / .18); }
+  .tip b { display: block; margin-bottom: 4px; font-size: 16px; }
+  .tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); }
+  .tip div span:last-child { color: var(--text); }
+
+  /* What the agents said to each other, newest first. */
+  .msgs { margin: 14px 0 0; }
+  .msgs figcaption span { font-size: 12px; font-weight: 400; }
+  .mtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mtable td { padding: 5px 12px 5px 0; vertical-align: top; border-top: 1px solid var(--line); }
+  .mtable tr:first-child td { border-top: 0; }
+  .mtable .when, .mtable .who { white-space: nowrap; color: var(--muted); }
+  .mtable .who b { font-weight: 500; color: var(--text); }
+  .mtable .said { width: 100%; min-width: 220px; overflow-wrap: anywhere; }
+  .mtable .said div + div { margin-top: 3px; }
+  .mtable .said .label { color: var(--muted); }
+
+  /* The auditor's scorecard, rendered from audit.md. */
+  .audit { padding: 0 24px 40px; }
+  .audit .doc { padding: 0; overflow-x: auto; font-size: 13px; }
+  .audit .doc table { width: 100%; margin-top: 12px; }
+
+  /* The file reader. */
+  dialog { width: min(960px, 94vw); height: min(720px, 88vh); padding: 0; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 12px; }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  dialog[open] { display: grid; grid-template: auto 1fr / 230px 1fr; }
+  .dhead { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: start; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .dhead h2 { margin: 0; font-size: 15px; }
+  .dhead p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .dhead button { font: inherit; padding: 2px 10px; color: inherit; background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+  .files { padding: 8px; overflow: auto; border-right: 1px solid var(--line); }
+  .files button { display: block; width: 100%; padding: 6px 8px; text-align: left; font-size: 12px; color: var(--muted); background: none; border: 0; border-radius: 6px; cursor: pointer; }
+  .files button[aria-current] { background: var(--bg); color: var(--text); }
+  .doc { padding: 4px 24px 24px; overflow: auto; }
+  .doc h1 { font-size: 19px; } .doc h2 { font-size: 15px; margin-top: 22px; } .doc h3, .doc h4 { font-size: 14px; }
+  .doc code { padding: 1px 4px; font-size: 12px; background: var(--bg); border-radius: 4px; }
+  .doc pre { padding: 12px; overflow: auto; font-size: 12px; background: var(--bg); border-radius: 8px; }
+  .doc table { border-collapse: collapse; } .doc th, .doc td { padding: 4px 10px; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+  .doc blockquote { margin: 12px 0; padding-left: 12px; color: var(--muted); border-left: 3px solid var(--line); }
+  .doc hr { border: 0; border-top: 1px solid var(--line); }
+  .doc .li { display: flex; gap: 8px; margin: 3px 0; }
+  .doc .li > :first-child { flex: none; min-width: 14px; color: var(--muted); }
+  .verdict { display: inline-block; margin: 14px 0 0; padding: 2px 12px; font-weight: 600; letter-spacing: .04em; color: var(--on); background: var(--pass); border-radius: 999px; }
+  .verdict.changes { background: var(--changes); }
+  .verdict.escalate { background: var(--human); }
+
+  @media (max-width: 640px) {
+    dialog[open] { grid-template: auto auto 1fr / 1fr; }
+    .files { max-height: 28vh; border-right: 0; border-bottom: 1px solid var(--line); }
+    .bar { grid-template-columns: 104px 1fr; }
+    .thead .last { margin-left: 0; flex-basis: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .round.active .chip.pending, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Software factory</h1>
+  <span id="live" class="live">connecting</span>
+</header>
+<p id="empty" hidden>No jobs yet. Run <code>/factory &lt;feature&gt;</code> in Claude Code, or queue one with <code>/factory backlog &lt;feature&gt;</code>.</p>
+<main id="board" class="board"></main>
+
+<section id="tickets" class="tickets" hidden>
+  <div class="thead"><h2>Tickets</h2><span id="kcount" class="last"></span></div>
+  <div class="tscroll"><table id="ktable" class="ktable"></table></div>
+  <p id="kreq" class="tnote"></p>
+</section>
+
+<section class="tokens">
+  <div class="thead">
+    <h2>Tokens, messages and errors</h2>
+    <label>Job <select id="tjob"></select></label>
+    <label>Bars show <select id="tmeasure"></select></label>
+    <span id="tlast" class="last"></span>
+  </div>
+  <p id="tempty" class="tnote">Nothing logged yet. The hooks in <code>.claude/settings.json</code> write <code>factory/tokens.jsonl</code> and <code>factory/messages.jsonl</code> as agents start and finish, and agents log errors to <code>factory/errors.jsonl</code>.</p>
+  <div id="tbody" hidden>
+    <div id="tiles" class="tiles"></div>
+    <figure class="chart"><figcaption id="tcap"></figcaption><div id="bars"></div></figure>
+    <div class="tscroll"><table id="ttable" class="ttable"></table></div>
+    <p id="tnote" class="tnote"></p>
+  </div>
+  <figure id="mbox" class="chart msgs" hidden>
+    <figcaption>Messages between agents <span id="mcount" class="muted"></span></figcaption>
+    <div class="tscroll"><table id="mtable" class="mtable"></table></div>
+  </figure>
+  <figure id="ebox" class="chart msgs" hidden>
+    <figcaption>Errors and the solutions implemented <span id="ecount" class="muted"></span></figcaption>
+    <div class="tscroll"><table id="etable" class="mtable"></table></div>
+  </figure>
+</section>
+<section class="audit">
+  <div class="thead"><h2>Agent scorecard</h2><span class="last">the auditor rewrites it after every merge</span></div>
+  <p id="aempty" class="tnote">No audit yet. The auditor runs after every merge, or run <code>/factory audit</code>.</p>
+  <article id="audit" class="doc" hidden></article>
+</section>
+<div id="tip" class="tip" hidden></div>
+
+<dialog id="dlg">
+  <div class="dhead">
+    <div><h2 id="dtitle"></h2><p id="dsub" class="mono"></p></div>
+    <form method="dialog"><button type="button" id="dmove" hidden></button> <button>Close</button></form>
+  </div>
+  <nav id="files" class="files"></nav>
+  <article id="doc" class="doc"></article>
+</dialog>
+
+<script>
+// Columns, in loop order: [stage in board.json, title, who works there].
+const STAGES = [
+  ['spec', 'Spec', 'spec-writer'],
+  ['design', 'Design', 'architect'],
+  ['plan', 'Plan', 'planner'],
+  ['build', 'Build', 'builder'],
+  ['review', 'Review', 'test · e2e · security · ux · ui · code'],
+  ['approve', 'Approve', 'approver'],
+  ['needs-human', 'Needs human', 'approve or rework'],
+  ['merged', 'Merged', 'on main'],
+];
+const POLL_MS = 2000;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const chipClass = v => ({ PASS: 'pass', CHANGES: 'changes' }[v] || 'pending');
+// Every review round of a job, oldest first: finished rounds, then the current one.
+const rounds = job => [...(job.history || []), ...(job.round > 0 ? [job.reviews || {}] : [])];
+
+let board = { jobs: [] }, boardText = null;
+
+// ---- board ----------------------------------------------------------------
+
+function status(job) {
+  const verdicts = Object.values(job.reviews || {});
+  return {
+    'spec': 'spec-writer is writing the spec',
+    'design': 'architect is deciding the design',
+    'plan': 'planner is writing the plan',
+    'build': job.round ? `builder is fixing round ${job.round} findings` : 'builder is building',
+    'review': `round ${job.round}: ${verdicts.filter(v => v !== 'pending').length} of ${verdicts.length} verdicts in`,
+    'approve': 'approver is deciding',
+    'needs-human': 'waiting for you',
+    'merged': 'merged to main',
+  }[job.stage] || job.stage;
+}
+
+// The steps a job goes through, by type. A ticket's progress is its place in them.
+const STEPS = {
+  feature: ['spec', 'design', 'plan', 'build', 'review', 'approve', 'merged'],
+  cleanup: ['build', 'review', 'approve', 'merged'],
+};
+
+function progress(job) {
+  const steps = STEPS[job.type] || STEPS.feature;
+  // A job waiting for the human stopped at the approval step.
+  const at = Math.max(steps.indexOf(job.stage === 'needs-human' ? 'approve' : job.stage), 0);
+  const merged = job.stage === 'merged';
+  return { count: steps.length, done: merged ? steps.length : at, step: merged ? '' : `step ${at + 1} of ${steps.length}` };
+}
+
+// `idle` is a ticket nobody has started: no step is the current one.
+function meter({ count, done, idle }) {
+  const cells = Array.from({ length: count }, (_, i) => `<i class="${i < done ? 'done' : i === done && !idle ? 'now' : ''}"></i>`).join('');
+  return `<span class="meter" role="img" aria-label="${done} of ${count} steps done">${cells}</span>`;
+}
+
+// What each ticket has cost so far: its lines of tokens.jsonl, summed.
+let usage = new Map();
+function usageByJob() {
+  const by = new Map();
+  for (const r of tokens) {
+    if (!r.job) continue;
+    if (!by.has(r.job)) by.set(r.job, { total: 0, output: 0, runs: new Set(), agents: new Map() });
+    const u = by.get(r.job);
+    u.total += total(r);
+    u.output += r.output;
+    u.runs.add(r.agent_id);
+    u.agents.set(r.agent, (u.agents.get(r.agent) || 0) + total(r));
+  }
+  return by;
+}
+
+function card(job) {
+  const all = rounds(job), p = progress(job), used = usage.get(job.id);
+  const rows = all.map((reviews, i) => {
+    const active = job.stage === 'review' && i === all.length - 1;
+    const chips = Object.entries(reviews).map(([who, v]) => `<span class="chip ${chipClass(v)}">${esc(who)}</span>`).join('');
+    return `<span class="round${active ? ' active' : ''}"><span class="rn">R${i + 1}</span>${chips}</span>`;
+  }).join('');
+  const name = 'job-' + String(job.id).replace(/[^a-zA-Z0-9]/g, '-');
+  return `<button class="card ${esc(job.stage)}" data-id="${esc(job.id)}" style="view-transition-name:${name}">
+    <span class="id mono">${esc(job.id)}</span>
+    <span class="feature">${esc(job.feature || job.id)}</span>${meter(p)}${rows}
+    <span class="status">${esc((p.step ? p.step + ' · ' : '') + status(job))}</span>
+    ${used ? `<span class="tok">${compact(used.total)} tokens · ${used.runs.size} agent run${used.runs.size === 1 ? '' : 's'}</span>` : ''}
+    ${requested('move', job.id) ? `<span class="tok">move to ${esc(nextStep(job) || '')} requested</span>` : ''}
+    ${job.note ? `<span class="note">${esc(job.note)}</span>` : ''}
+  </button>`;
+}
+
+// The features waiting in backlog.md: its unchecked `- [ ]` lines, in the order they run.
+let backlog = [], backlogText = null;
+const parseBacklog = text => text.split('\n').flatMap(line => {
+  const item = line.match(/^\s*[-*+]\s+\[ \]\s+(.+)$/);
+  return item ? [item[1].trim()] : [];
+});
+
+function backlogColumn() {
+  return `<section class="col backlog">
+    <h2>Backlog <span>${backlog.length || ''}</span></h2>
+    <p class="who">/factory next</p>
+    ${backlog.map((feature, i) => `<div class="card waiting">
+      <span class="id mono">${i ? '#' + (i + 1) : 'next'}</span>
+      <span class="feature">${esc(feature)}</span>
+    </div>`).join('') || '<div class="slot"></div>'}
+  </section>`;
+}
+
+async function pollBacklog() {
+  let text = '';
+  try {
+    const res = await fetch('backlog.md?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = await res.text();
+  } catch { return; }
+  if (text === backlogText) return;
+  const first = backlogText === null;
+  backlogText = text;
+  backlog = parseBacklog(text);
+  draw(!first);
+}
+
+function column([stage, title, who]) {
+  const known = s => STAGES.some(([name]) => name === s);
+  const jobs = (board.jobs || []).filter(j => (known(j.stage) ? j.stage : 'spec') === stage);
+  if (stage === 'merged') jobs.reverse();
+  return `<section class="col ${stage}">
+    <h2>${title} <span>${jobs.length || ''}</span></h2>
+    <p class="who">${who}</p>
+    ${jobs.map(card).join('') || '<div class="slot"></div>'}
+  </section>`;
+}
+
+// ---- moving tickets ----------------------------------------------------------
+
+// The dashboard never moves a ticket itself. A click is appended to requests.jsonl by
+// serve.py, and the orchestrator does the move and writes its answer there.
+let waiting = [], answered = [], requestsText = null, refused = '';
+
+function parseRequests(text) {
+  const lines = text.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
+  const answers = new Map(lines.filter(l => l.done).map(l => [l.id, l.result]));
+  const asked = lines.filter(l => !l.done && l.id);
+  waiting = asked.filter(r => !answers.has(r.id));
+  answered = asked.filter(r => answers.has(r.id)).map(r => ({ ...r, result: answers.get(r.id) }));
+}
+const requested = (action, what) => waiting.some(r => r.action === action && (r.job || r.feature) === what);
+
+// Where a job goes when it is moved on, or null at the end of the loop.
+function nextStep(job) {
+  if (job.stage === 'needs-human') return 'merged';
+  const steps = STEPS[job.type] || STEPS.feature, at = steps.indexOf(job.stage);
+  return at < 0 || at === steps.length - 1 ? null : steps[at + 1];
+}
+const moveLabel = job => nextStep(job) === 'merged' ? '→ merge' : `→ ${nextStep(job)}`;
+
+function moveQuestion(job) {
+  if (job.stage === 'needs-human') return `Approve ${job.id} and merge it to main?`;
+  if (job.stage === 'review') return `End review round ${job.round} of ${job.id} now and send it to the approver?\nVerdicts still pending will be marked skipped.`;
+  return `Move ${job.id} on to ${nextStep(job)}?`;
+}
+
+async function request(body, question) {
+  if (!confirm(question)) return;
+  refused = "Moving a ticket needs the dashboard's own server: stop `python3 -m http.server` and run `python3 factory/serve.py`.";
+  try {
+    const res = await fetch('requests', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Factory-Dashboard': '1' }, body: JSON.stringify(body) });
+    if (res.status === 201) refused = '';
+    else if ([400, 403, 409].includes(res.status)) refused = `Not requested: ${(await res.json()).error}.`;
+  } catch { /* the message above stands */ }
+  requestsText = null;
+  await pollRequests();
+}
+const moveJob = id => { const job = (board.jobs || []).find(j => j.id === id); if (job && nextStep(job)) request({ action: 'move', job: id }, moveQuestion(job)); };
+
+function requestNote() {
+  const name = r => r.action === 'start' ? `start "${r.feature}"` : `move ${r.job}`;
+  const lines = [
+    refused,
+    ...waiting.map(r => `${r.id}: ${name(r)} is requested. A Claude Code session open in this project picks it up; otherwise run /factory.`),
+    ...answered.slice(-3).reverse().map(r => `${r.id}: ${name(r)}: ${r.result}`),
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+async function pollRequests() {
+  let text = '';
+  try {
+    const res = await fetch('requests.jsonl?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = await res.text();
+  } catch { return; }
+  if (text === requestsText) return;
+  requestsText = text;
+  parseRequests(text);
+  draw(false);
+}
+
+// Every ticket as a row: the jobs under way, then the backlog, then what has merged.
+function drawTickets() {
+  const jobs = board.jobs || [], steps = STEPS.feature.length;
+  const active = jobs.filter(j => j.stage !== 'merged'), merged = jobs.filter(j => j.stage === 'merged').reverse();
+  const waiting = active.filter(j => j.stage === 'needs-human').length;
+  $('tickets').hidden = jobs.length + backlog.length === 0;
+  $('kcount').textContent = [`${active.length - waiting} in progress`, waiting ? `${waiting} waiting for you` : '',
+    `${backlog.length} in the backlog`, `${merged.length} merged`].filter(Boolean).join(', ');
+
+  const none = '<td>–</td><td>–</td><td>–</td><td></td>';
+  const cost = id => {
+    const u = usage.get(id);
+    if (!u) return none;
+    const [agent, most] = [...u.agents].sort((a, b) => b[1] - a[1])[0];
+    return `<td><button class="link" data-job="${esc(id)}" title="${full(u.total)} tokens. Show them by agent.">${compact(u.total)}</button></td>
+      <td title="${full(u.output)}">${compact(u.output)}</td><td>${u.runs.size}</td>
+      <td>${esc(agent)} ${Math.round(100 * most / u.total)}%</td>`;
+  };
+  const row = job => {
+    const p = progress(job);
+    return `<tr><td><button class="link mono" data-id="${esc(job.id)}">${esc(job.id)}</button></td>
+      <td class="task">${esc(job.feature || job.id)}</td><td>${esc(status(job))}</td>
+      <td><span class="prog">${meter(p)}<span>${p.step ? `${p.done + 1}/${p.count}` : 'done'}</span></span></td>
+      <td>${job.round || ''}</td>${cost(job.id)}
+      <td>${!nextStep(job) ? '' : requested('move', job.id) ? '<span class="muted">requested</span>' : `<button class="move" data-move="${esc(job.id)}">${esc(moveLabel(job))}</button>`}</td></tr>`;
+  };
+  const queued = (feature, i) => `<tr class="queued"><td class="mono">${i ? '#' + (i + 1) : 'next'}</td>
+    <td class="task">${esc(feature)}</td><td>in the backlog</td>
+    <td><span class="prog">${meter({ count: steps, done: 0, idle: true })}<span>0/${steps}</span></span></td><td></td>${none}
+    <td>${requested('start', feature) ? '<span class="muted">requested</span>' : `<button class="move" data-start="${i}">Start</button>`}</td></tr>`;
+  const all = [...usage.entries()].filter(([id]) => jobs.some(j => j.id === id)).map(([, u]) => u);
+  const sum = f => all.reduce((n, u) => n + f(u), 0);
+  $('ktable').innerHTML = `<thead><tr><th>Ticket</th><th>Task</th><th>Status</th><th>Progress</th><th>Round</th>
+      <th>Tokens</th><th>Output</th><th>Agent runs</th><th>Most tokens</th><th>Move</th></tr></thead>
+    <tbody>${active.map(row).join('')}${backlog.map(queued).join('')}${merged.map(row).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td></td><td></td><td></td><td></td><td title="${full(sum(u => u.total))}">${compact(sum(u => u.total))}</td>
+      <td title="${full(sum(u => u.output))}">${compact(sum(u => u.output))}</td><td>${sum(u => u.runs.size)}</td><td></td><td></td></tr></tfoot>`;
+  $('kreq').textContent = requestNote();
+}
+
+function draw(animate) {
+  usage = usageByJob();
+  const paint = () => {
+    $('board').innerHTML = backlogColumn() + STAGES.map(column).join('');
+    $('empty').hidden = (board.jobs || []).length + backlog.length > 0;
+    drawTickets();
+  };
+  // Cards keep their identity across repaints, so they glide to their new column.
+  if (animate && document.startViewTransition) document.startViewTransition(paint); else paint();
+  refreshReader();
+}
+
+async function poll() {
+  try {
+    const res = await fetch('board.json?' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.status);
+    const text = await res.text();
+    if (text !== boardText) {
+      board = JSON.parse(text);
+      const first = boardText === null;
+      boardText = text;
+      draw(!first);
+      if (first && location.hash) openJob(decodeURIComponent(location.hash.slice(1)));
+    }
+    $('live').className = 'live ok';
+    $('live').textContent = 'live';
+  } catch {
+    $('live').className = 'live off';
+    $('live').textContent = 'can\'t read board.json: run `python3 factory/serve.py`';
+  }
+  pollBacklog();
+  pollRequests();
+  pollTokens();
+  pollMessages();
+  pollErrors();
+  pollAudit();
+}
+
+// ---- tokens ---------------------------------------------------------------
+
+// What the bars can count: [key, label, the tokens of one line or one sum of lines].
+const MEASURES = [
+  ['total', 'All tokens', r => r.input + r.cache_write + r.cache_read + r.output],
+  ['output', 'Output', r => r.output],
+  ['fresh', 'Input, not cached', r => r.input + r.cache_write],
+  ['cached', 'Input, read from cache', r => r.cache_read],
+];
+const COUNTS = ['input', 'output', 'cache_write', 'cache_read', 'calls', 'partial'];
+const ALL_JOBS = '*', NO_JOB = '';
+const full = n => n.toLocaleString('en-US');
+const compact = n => n >= 1e9 ? (n / 1e9).toFixed(1) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'K' : full(n);
+
+let tokens = [], tokensText = null, agents = [];
+
+// One line of tokens.jsonl per agent run (or per resume of one), with every count a number.
+function parseTokens(text) {
+  return text.split('\n').flatMap(line => {
+    try {
+      const r = JSON.parse(line);
+      return r && r.agent ? [{ ...r, ...Object.fromEntries(COUNTS.map(c => [c, Number(r[c]) || 0])) }] : [];
+    } catch { return []; }
+  });
+}
+
+const total = MEASURES[0][2];
+
+function drawTokens() {
+  // The job filter scopes everything below it: the tokens and the messages.
+  const jobs = [...new Set([...tokens, ...messages, ...errors].map(r => r.job || NO_JOB))].sort();
+  const job = jobs.includes($('tjob').value) ? $('tjob').value : ALL_JOBS;
+  $('tjob').innerHTML = `<option value="${ALL_JOBS}">All jobs</option>` +
+    jobs.map(j => `<option value="${esc(j)}">${esc(j || 'No job')}</option>`).join('');
+  $('tjob').value = job;
+  const inJob = r => job === ALL_JOBS || (r.job || NO_JOB) === job;
+  drawMessages(messages.filter(inJob), job === ALL_JOBS);
+  drawErrors(errors.filter(inJob), job === ALL_JOBS);
+  $('tempty').hidden = tokens.length + messages.length + errors.length > 0;
+  $('tbody').hidden = tokens.length === 0;
+  if (!tokens.length) return;
+  const rows = tokens.filter(inJob);
+  const [, label, count] = MEASURES.find(m => m[0] === $('tmeasure').value) || MEASURES[0];
+
+  // One row per agent: its counts summed, its runs and models collected.
+  const byAgent = new Map();
+  for (const r of rows) {
+    if (!byAgent.has(r.agent)) byAgent.set(r.agent, { agent: r.agent, runs: new Set(), models: new Set(), ...Object.fromEntries(COUNTS.map(c => [c, 0])) });
+    const a = byAgent.get(r.agent);
+    for (const c of COUNTS) a[c] += r[c];
+    a.runs.add(r.agent_id);
+    if (r.model) a.models.add(String(r.model).replace(/^claude-/, ''));
+  }
+  agents = [...byAgent.values()].sort((a, b) => count(b) - count(a));
+  const sum = Object.fromEntries(COUNTS.map(c => [c, agents.reduce((n, a) => n + a[c], 0)]));
+  const runs = agents.reduce((n, a) => n + a.runs.size, 0);
+
+  $('tiles').innerHTML = [...MEASURES.map(([, name, f]) => [name, f(sum)]), ['Agent runs', runs]]
+    .map(([name, n]) => `<div class="tile" title="${full(n)}"><span class="label">${name}</span><span class="value">${compact(n)}</span></div>`).join('');
+
+  // The label sits at the tip of the bar, so the longest bar leaves room for it.
+  const max = Math.max(1, ...agents.map(count));
+  $('tcap').textContent = `${label} by agent`;
+  $('bars').innerHTML = agents.map((a, i) => `<div class="bar" tabindex="0" data-i="${i}">
+    <span class="name">${esc(a.agent)}</span>
+    <span class="track"><span class="fill" style="flex-basis:calc((100% - 64px) * ${count(a) / max})"></span><span class="val">${compact(count(a))}</span></span>
+  </div>`).join('');
+
+  const cells = a => [a.input, a.cache_write, a.cache_read, a.output, total(a)].map(n => `<td>${full(n)}</td>`).join('');
+  $('ttable').innerHTML = `<thead><tr><th>Agent</th><th>Model</th><th>Runs</th><th>API calls</th>
+      <th>Input</th><th>Cache write</th><th>Cache read</th><th>Output</th><th>All tokens</th></tr></thead>
+    <tbody>${agents.map(a => `<tr><td>${esc(a.agent)}</td><td>${esc([...a.models].join(', '))}</td>
+      <td>${a.runs.size}</td><td>${full(a.calls)}</td>${cells(a)}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td></td><td>${runs}</td><td>${full(sum.calls)}</td>${cells(sum)}</tr></tfoot>`;
+
+  $('tnote').textContent = sum.partial
+    ? `Output is a lower bound: ${full(sum.partial)} of ${full(sum.calls)} replies were logged before they finished streaming, with only their first output tokens counted. Input and cache counts are exact.`
+    : '';
+  const last = rows.reduce((ts, r) => (r.ts && r.ts > ts ? r.ts : ts), '');
+  $('tlast').textContent = last ? `last logged ${new Date(last).toLocaleString()}` : '';
+}
+
+async function pollTokens() {
+  let text = '';
+  try {
+    const res = await fetch('tokens.jsonl?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = await res.text();
+  } catch { return; }
+  if (text === tokensText) return;
+  tokensText = text;
+  tokens = parseTokens(text);
+  drawTokens();
+  draw(false); // the cards show each job's tokens
+}
+
+// The same details on hover and on keyboard focus.
+function tip(bar, x, y) {
+  const a = bar && agents[bar.dataset.i];
+  $('tip').hidden = !a;
+  if (!a) return;
+  const line = (name, value) => `<div><span>${name}</span><span>${esc(value)}</span></div>`;
+  $('tip').innerHTML = `<span class="muted">${esc(a.agent)}</span><b>${full(total(a))}</b>` +
+    line('Output', full(a.output)) + line('Input, not cached', full(a.input + a.cache_write)) +
+    line('Input, read from cache', full(a.cache_read)) + line('Runs', a.runs.size) +
+    line('API calls', full(a.calls)) + line('Model', [...a.models].join(', ') || 'unknown');
+  const box = $('tip').getBoundingClientRect();
+  $('tip').style.left = Math.max(8, Math.min(x + 14, innerWidth - box.width - 8)) + 'px';
+  $('tip').style.top = Math.max(8, Math.min(y + 14, innerHeight - box.height - 8)) + 'px';
+}
+
+// ---- messages -------------------------------------------------------------
+
+const MAX_MESSAGES = 200;
+let messages = [], messagesText = null;
+
+// One line of messages.jsonl per prompt, reply or job file written.
+const parseMessages = text => text.split('\n').flatMap(line => {
+  try { const r = JSON.parse(line); return r && r.kind ? [r] : []; } catch { return []; }
+});
+
+function drawMessages(rows, allJobs) {
+  $('mbox').hidden = messages.length === 0;
+  const latest = [...rows].sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, MAX_MESSAGES);
+  $('mcount').textContent = (rows.length > latest.length ? `latest ${latest.length} of ${full(rows.length)}` : full(rows.length)) + ', newest first';
+  const when = ts => ts ? new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+  $('mtable').innerHTML = latest.map(r => {
+    // A written file is a message too: it is how the agents hand work to each other.
+    const who = r.kind === 'write'
+      ? `<b>${esc(r.from)}</b> wrote <span class="mono">${esc(String(r.file || '').replace((r.job || '') + '/', ''))}</span>`
+      : `<b>${esc(r.from)}</b> → <b>${esc(r.to)}</b>`;
+    const text = String(r.text || '');
+    return `<tr><td class="when">${esc(when(r.ts))}</td>${allJobs ? `<td class="when mono">${esc(r.job || '')}</td>` : ''}
+      <td class="who">${who}</td><td class="said" title="${esc(text)}">${esc(text.length > 280 ? text.slice(0, 280) + '…' : text)}</td></tr>`;
+  }).join('');
+}
+
+async function pollMessages() {
+  let text = '';
+  try {
+    const res = await fetch('messages.jsonl?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = await res.text();
+  } catch { return; }
+  if (text === messagesText) return;
+  messagesText = text;
+  messages = parseMessages(text);
+  drawTokens();
+}
+
+// ---- errors ---------------------------------------------------------------
+
+let errors = [], errorsText = null;
+
+// One line of errors.jsonl per error an agent hit, with the solution it implemented.
+function drawErrors(rows, allJobs) {
+  $('ebox').hidden = errors.length === 0;
+  const latest = [...rows].reverse().slice(0, MAX_MESSAGES);
+  const open = rows.filter(r => r.status === 'unsolved').length;
+  $('ecount').textContent = `${full(rows.length)}, newest first` + (open ? `, ${open} unsolved` : '');
+  const part = (label, text) => text ? `<div><span class="label">${label}</span> ${esc(text)}</div>` : '';
+  $('etable').innerHTML = latest.map(r => `<tr>
+    <td class="when">${esc(r.ts ? new Date(r.ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')}</td>
+    ${allJobs ? `<td class="when mono">${esc(r.job || '')}</td>` : ''}
+    <td class="who"><span class="mono">${esc(r.id)}</span> <b>${esc(r.agent)}</b> ${esc(r.status)}${r.same_as ? `, same as ${esc(r.same_as)}` : ''}</td>
+    <td class="said"><div class="mono">${esc(r.error)}</div>${part('Where', r.where)}${part('Cause', r.cause)}
+      ${part(r.status === 'unsolved' ? 'Tried' : 'Solution', r.solution)}${part('Files', (r.files || []).join(', '))}</td></tr>`).join('');
+}
+
+async function pollErrors() {
+  let text = '';
+  try {
+    const res = await fetch('errors.jsonl?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = await res.text();
+  } catch { return; }
+  if (text === errorsText) return;
+  errorsText = text;
+  errors = text.split('\n').flatMap(line => { try { const r = JSON.parse(line); return r && r.error ? [r] : []; } catch { return []; } });
+  drawTokens();
+}
+
+// ---- audit ----------------------------------------------------------------
+
+let auditText = null;
+
+async function pollAudit() {
+  let text = '';
+  try {
+    const res = await fetch('audit.md?' + Date.now(), { cache: 'no-store' });
+    if (res.ok) text = (await res.text()).trim();
+  } catch { return; }
+  if (text === auditText) return;
+  auditText = text;
+  $('aempty').hidden = text !== '';
+  $('audit').hidden = text === '';
+  $('audit').innerHTML = text ? md(text) : '';
+}
+
+// ---- file reader ----------------------------------------------------------
+
+let openId = null, currentFile = null, shownJob = '', shownHtml = '';
+
+// The files a job should have by now, worked out from the board.
+function files(job) {
+  const list = [];
+  // A feature job writes these three in order; a cleanup job has none of them.
+  const upfront = ['spec', 'design', 'plan'], at = upfront.indexOf(job.stage);
+  if (job.type !== 'cleanup') list.push(...upfront.slice(0, at < 0 ? 3 : at).map(s => s + '.md'));
+  if (job.round > 0) list.push('build.md');
+  rounds(job).forEach((reviews, i) => {
+    for (const [who, v] of Object.entries(reviews)) if (v === 'PASS' || v === 'CHANGES') list.push(`round-${i + 1}/review-${who}.md`);
+  });
+  if (job.stage === 'merged' || job.stage === 'needs-human') list.push('decision.md');
+  if (job.audited) list.push('audit.md');
+  return list;
+}
+
+function openJob(id) {
+  if (!(board.jobs || []).some(j => j.id === id)) return;
+  openId = id; currentFile = null; shownJob = '';
+  if (!$('dlg').open) $('dlg').showModal();
+  refreshReader();
+  history.replaceState(null, '', '#' + encodeURIComponent(id));
+}
+
+function refreshReader() {
+  const job = (board.jobs || []).find(j => j.id === openId);
+  const movable = job && nextStep(job) && !requested('move', job.id);
+  $('dmove').hidden = !movable;
+  if (movable) $('dmove').textContent = `Move ${moveLabel(job)}`;
+  if (!job || JSON.stringify(job) === shownJob) return;
+  shownJob = JSON.stringify(job);
+  const list = files(job);
+  if (!list.includes(currentFile)) currentFile = list[list.length - 1] || null;
+  $('dtitle').textContent = job.feature || job.id;
+  $('dsub').textContent = job.stage === 'needs-human'
+    ? `/factory approve ${job.id}   or   /factory rework ${job.id} <note>`
+    : `${job.id} · ${job.branch || ''} · ${status(job)}`;
+  $('files').innerHTML = list.map(f => `<button data-file="${esc(f)}">${esc(f)}</button>`).join('');
+  show(currentFile);
+}
+
+async function show(file) {
+  const id = openId;
+  currentFile = file;
+  for (const b of $('files').children) b.toggleAttribute('aria-current', b.dataset.file === file);
+  $('files').querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
+  let html = '<p class="muted">Nothing written yet.</p>';
+  if (file) {
+    try {
+      const res = await fetch(`jobs/${encodeURIComponent(id)}/${file}?${Date.now()}`, { cache: 'no-store' });
+      html = res.ok ? md(await res.text()) : `<p class="muted">${esc(file)} is not written yet.</p>`;
+    } catch {
+      html = '<p class="muted">Can\'t reach the server.</p>';
+    }
+  }
+  if (id !== openId || file !== currentFile || html === shownHtml) return;
+  $('doc').innerHTML = shownHtml = html;
+  $('doc').scrollTop = 0;
+}
+
+// ---- markdown, just enough for specs and reviews ---------------------------
+
+function inline(s) {
+  return esc(s).split(/(`[^`]+`)/).map((part, i) => i % 2
+    ? `<code>${part.slice(1, -1)}</code>`
+    : part
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(?<![\w*])\*([^*\s][^*]*?)\*(?!\w)/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+  ).join('');
+}
+
+function md(src) {
+  const lines = src.replace(/\r/g, '').split('\n'), out = [];
+  const FENCE = /^\s*```/, ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)/, ROW = /^\s*\|.*\|\s*$/;
+  const BLOCK = /^\s*(#{1,6}\s|```|>|[-*+]\s|\d+[.)]\s|\||-{3,}\s*$)/;
+  const cells = l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim()));
+  let i = 0, m;
+
+  // Reviews and decisions open with their verdict: show it as a badge.
+  if ((m = lines[0].match(/^(?:VERDICT:\s*)?(PASS|CHANGES|APPROVE|ESCALATE)\s*$/))) {
+    out.push(`<p class="verdict ${m[1].toLowerCase()}">${m[1]}</p>`);
+    i = 1;
+  }
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) { i++; continue; }
+    if (FENCE.test(line)) {
+      const code = [];
+      for (i++; i < lines.length && !FENCE.test(lines[i]); i++) code.push(lines[i]);
+      i++;
+      out.push(`<pre>${esc(code.join('\n'))}</pre>`);
+    } else if ((m = line.match(/^(#{1,6})\s+(.*)/))) {
+      const n = Math.min(m[1].length, 4);
+      out.push(`<h${n}>${inline(m[2])}</h${n}>`);
+      i++;
+    } else if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) {
+      out.push('<hr>');
+      i++;
+    } else if (ROW.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] || '')) {
+      const head = cells(line), body = [];
+      for (i += 2; i < lines.length && ROW.test(lines[i]); i++) body.push(cells(lines[i]));
+      out.push(`<table><thead><tr>${head.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
+        body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+    } else if (ITEM.test(line)) {
+      const items = [];
+      for (; i < lines.length; i++) {
+        if ((m = lines[i].match(ITEM))) {
+          const task = m[3].match(/^\[([ xX])\]\s+(.*)/);
+          const mark = task ? (task[1] === ' ' ? '☐' : '☑') : /\d/.test(m[2]) ? m[2] : '•';
+          items.push([Math.floor(m[1].length / 2), mark, task ? task[2] : m[3]]);
+        } else if (/^\s+\S/.test(lines[i]) && !FENCE.test(lines[i])) {
+          items[items.length - 1][2] += ' ' + lines[i].trim();
+        } else break;
+      }
+      out.push(items.map(([depth, mark, text]) =>
+        `<div class="li" style="margin-left:${depth * 1.4}em"><span>${mark}</span><span>${inline(text)}</span></div>`).join(''));
+    } else if (/^\s*>/.test(line)) {
+      const quote = [];
+      for (; i < lines.length && /^\s*>/.test(lines[i]); i++) quote.push(inline(lines[i].replace(/^\s*>\s?/, '')));
+      out.push(`<blockquote>${quote.join('<br>')}</blockquote>`);
+    } else {
+      const para = [line];
+      for (i++; i < lines.length && lines[i].trim() && !BLOCK.test(lines[i]); i++) para.push(lines[i]);
+      out.push(`<p>${inline(para.join(' '))}</p>`);
+    }
+  }
+  return out.join('\n');
+}
+
+// ---- wiring ---------------------------------------------------------------
+
+$('board').addEventListener('click', e => {
+  const el = e.target.closest('[data-id]');
+  if (el) openJob(el.dataset.id);
+});
+$('ktable').addEventListener('click', e => {
+  const { id, job, move, start } = e.target.dataset;
+  if (id) openJob(id);
+  if (move) moveJob(move);
+  if (start) request({ action: 'start', feature: backlog[start] }, `Start "${backlog[start]}" now, as a new job?`);
+  // A ticket's token count leads to the same tokens, split by agent.
+  if (job) {
+    $('tjob').value = job;
+    drawTokens();
+    $('tjob').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+$('dmove').addEventListener('click', () => moveJob(openId));
+$('files').addEventListener('click', e => {
+  if (e.target.dataset.file) show(e.target.dataset.file);
+});
+$('dlg').addEventListener('click', e => { if (e.target === $('dlg')) $('dlg').close(); });
+$('dlg').addEventListener('close', () => {
+  openId = null; shownHtml = '';
+  history.replaceState(null, '', location.pathname);
+});
+
+$('tmeasure').innerHTML = MEASURES.map(([key, label]) => `<option value="${key}">${label}</option>`).join('');
+$('tjob').addEventListener('change', drawTokens);
+$('tmeasure').addEventListener('change', drawTokens);
+$('bars').addEventListener('pointermove', e => tip(e.target.closest('.bar'), e.clientX, e.clientY));
+$('bars').addEventListener('pointerleave', () => tip(null));
+$('bars').addEventListener('focusin', e => {
+  const box = e.target.getBoundingClientRect();
+  tip(e.target.closest('.bar'), box.left + 140, box.bottom - 14);
+});
+$('bars').addEventListener('focusout', () => tip(null));
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
