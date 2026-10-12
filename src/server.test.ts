@@ -173,3 +173,17 @@ describe('server: the database and the uploads folder (AC11)', () => {
     expect(listen).not.toHaveBeenCalled();
   });
 });
+
+describe('server: without an Anthropic API key (005 AC10)', () => {
+  it.each([
+    ['not set', undefined],
+    ['empty', ''],
+  ])('starts when ANTHROPIC_API_KEY is %s', async (_name, value) => {
+    vi.stubEnv('ANTHROPIC_API_KEY', value);
+
+    await expect(startServer()).resolves.toBeUndefined();
+
+    expect(createApp).toHaveBeenCalledTimes(1);
+    expect(listen).toHaveBeenCalledTimes(1);
+  });
+});

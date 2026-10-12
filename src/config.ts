@@ -64,6 +64,25 @@ export function getUploadsDir(env: NodeJS.ProcessEnv = process.env): string {
   return path.resolve(rootDir, raw);
 }
 
+/** The Claude model the analyzer asks when `ANTHROPIC_MODEL` does not name one. */
+export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
+
+/**
+ * The key the analyzer reaches the Anthropic API with: `ANTHROPIC_API_KEY`, or
+ * `undefined` when it is unset or blank. It never throws, so the server starts without a
+ * key and the caller decides what a missing key means.
+ */
+export function getAnthropicApiKey(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const raw = env.ANTHROPIC_API_KEY?.trim() ?? '';
+  return raw === '' ? undefined : raw;
+}
+
+/** The model the analyzer asks: `ANTHROPIC_MODEL`, or `DEFAULT_ANTHROPIC_MODEL` when it is unset or blank. */
+export function getAnthropicModel(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env.ANTHROPIC_MODEL?.trim() ?? '';
+  return raw === '' ? DEFAULT_ANTHROPIC_MODEL : raw;
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }

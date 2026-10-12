@@ -9,7 +9,13 @@ export default defineConfig({
     // The configured database is always in memory under the test runner, so no test
     // can reach data/app.db through getDatabasePath(). The configured uploads folder is
     // outside the repo for the same reason: no test can reach data/uploads through
-    // getUploadsDir(). Both win over the shell's values.
-    env: { DATABASE_PATH: ':memory:', UPLOADS_DIR: path.join(tmpdir(), 'mtask-vitest-uploads') },
+    // getUploadsDir(). The configured API key is always blank, so no test can send a
+    // request to the Anthropic API through getAnthropicApiKey(). All three win over the
+    // shell's values.
+    env: {
+      DATABASE_PATH: ':memory:',
+      UPLOADS_DIR: path.join(tmpdir(), 'mtask-vitest-uploads'),
+      ANTHROPIC_API_KEY: '',
+    },
   },
 });
