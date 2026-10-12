@@ -2,8 +2,14 @@
 
 ## Project facts
 
-- **Language**: TypeScript, nodejs APP
+- **Language**: TypeScript, nodejs APP. Node 22.18 or newer runs the `.ts` files
+  directly, with no compile step: relative imports end in `.ts`, and only erasable
+  syntax is allowed (no `enum`, no `namespace` with values, no constructor parameter
+  properties; type-only imports use `import type`).
 - **Package manager**: yarn.
+- **Test command**: `yarn test`.
+- **Build command**: `yarn build`.
+- **Dev command**: `yarn dev`.
 - **Lint command**: none.
 
 ## Factory
