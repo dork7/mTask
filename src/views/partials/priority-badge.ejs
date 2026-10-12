@@ -1,0 +1,7 @@
+<%#
+  priorityBadge: { priority }
+  `priority` is a priority id. An unknown id throws, so a badge never renders without
+  its name. The glyph is decoration; the label is the text.
+-%>
+<% const item = ui.priority(priorityBadge.priority); -%>
+<span class="badge badge--<%= item.id %>"><span aria-hidden="true"><%= item.glyph %></span><%= item.label %></span>

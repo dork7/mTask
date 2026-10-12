@@ -1,0 +1,15 @@
+<%#
+  pageHeader: { heading, sub?, actions? }
+  `actions` is HTML built by the caller. The h1 carries no attribute.
+-%>
+<header class="page-header">
+  <div class="page-header__text">
+    <h1><%= pageHeader.heading %></h1>
+<% if (pageHeader.sub) { -%>
+    <p class="page-header__sub"><%= pageHeader.sub %></p>
+<% } -%>
+  </div>
+<% if (pageHeader.actions) { -%>
+  <div class="page-header__actions"><%- pageHeader.actions %></div>
+<% } -%>
+</header>

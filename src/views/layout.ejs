@@ -4,12 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> - <%= appName %></title>
+  <%- include('partials/theme-script') -%>
   <link rel="stylesheet" href="/css/base.css">
 </head>
 <body>
   <header class="site-header">
     <a href="/"><%= appName %></a>
+    <%- include('partials/button', { button: { label: 'Toggle theme', variant: 'ghost', attrs: { 'data-theme-toggle': '' } } }) -%>
   </header>
+  <%- include('partials/nav') -%>
   <main class="page">
     <%- include('pages/' + page) %>
   </main>

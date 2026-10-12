@@ -15,6 +15,8 @@
 ## Factory
 
 Changes can be run through the factory pipeline (`/factory`): spec, architect, builder,
-review rounds, each job on its own `factory/<job-id>` branch with its files in
-`factory/jobs/<job-id>/`. The pipeline is defined in `.claude/skills/factory/SKILL.md`
-and `.claude/agents/`. Errors and their fixes are logged in `docs/errors/`.
+then a build and test check, each job on its own `factory/<job-id>` branch with its files
+in `factory/jobs/<job-id>/`. Reviewers run only when asked for, with
+`/factory review <job-id>`. The pipeline is defined in `.claude/skills/factory/SKILL.md`
+and `.claude/agents/`. Errors and their fixes are logged in `docs/errors/`. The dashboard
+is `python3 factory/serve.py`, then http://localhost:8000/dashboard.html.

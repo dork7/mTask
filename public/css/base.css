@@ -1,66 +1,796 @@
 /*
- * Base stylesheet. Every color is a variable declared on :root; no rule below the
- * :root block holds a color literal. Names and light values come from
- * docs/mockUps.html.
+ * The one stylesheet of the app. Sections, in order: tokens, dark theme, base
+ * elements, utilities, shell, components, style guide, wide screens, reduced motion.
+ *
+ * Rules for whoever edits it (the tests hold them):
+ * - A color is written once, as a literal, in the palette of the plain root block.
+ *   Every other place uses a token. "transparent" and named colors count as literals.
+ * - Custom properties are declared in the three token blocks only.
+ * - Font sizes, spacing and radii come from the scales. Padding, margin and gap hold
+ *   no px length.
+ * - Narrow screens come first. There is one min-width block and no max-width query.
+ * - No id selectors.
  */
 
+/* ---------- Tokens ---------- */
+
 :root {
-  --bg: #eef0f4;
-  --surface: #ffffff;
-  --text: #14171c;
-  --muted: #5d6675;
-  --border: #e1e4ea;
-  --accent: #4f46e5;
-  --accent-text: #ffffff;
+  /*
+   * Palette: every color in its light and its dark value, then the token that rules
+   * use, pointing at the light value. The 20 mockup colors keep the values of
+   * docs/mockUps.html. Rules never use a --light-* or --dark-* name directly.
+   */
+  --light-bg: #eef0f4;
+  --dark-bg: #0c0e12;
+  --bg: var(--light-bg);
+
+  --light-surface: #ffffff;
+  --dark-surface: #171a21;
+  --surface: var(--light-surface);
+
+  --light-surface-2: #f4f5f8;
+  --dark-surface-2: #1f232c;
+  --surface-2: var(--light-surface-2);
+
+  --light-text: #14171c;
+  --dark-text: #eceef3;
+  --text: var(--light-text);
+
+  --light-muted: #5d6675;
+  --dark-muted: #9aa3b2;
+  --muted: var(--light-muted);
+
+  --light-border: #e1e4ea;
+  --dark-border: #2b303b;
+  --border: var(--light-border);
+
+  --light-accent: #4f46e5;
+  --dark-accent: #8b86ff;
+  --accent: var(--light-accent);
+
+  --light-accent-text: #ffffff;
+  --dark-accent-text: #0c0e12;
+  --accent-text: var(--light-accent-text);
+
+  /* Priorities: the color and the tint it sits on. */
+  --light-urgent: #d93025;
+  --dark-urgent: #ff6b5e;
+  --urgent: var(--light-urgent);
+
+  --light-urgent-bg: #fde8e6;
+  --dark-urgent-bg: #3a1c1a;
+  --urgent-bg: var(--light-urgent-bg);
+
+  --light-high: #e8710a;
+  --dark-high: #ffa24d;
+  --high: var(--light-high);
+
+  --light-high-bg: #fdeedc;
+  --dark-high-bg: #3a2a16;
+  --high-bg: var(--light-high-bg);
+
+  --light-medium: #1a73e8;
+  --dark-medium: #6ea8ff;
+  --medium: var(--light-medium);
+
+  --light-medium-bg: #e3eefd;
+  --dark-medium-bg: #18283f;
+  --medium-bg: var(--light-medium-bg);
+
+  --light-low: #6b7280;
+  --dark-low: #a0a7b4;
+  --low: var(--light-low);
+
+  --light-low-bg: #eceef1;
+  --dark-low-bg: #262a32;
+  --low-bg: var(--light-low-bg);
+
+  /* Day slots: tints. */
+  --light-slot-morning: #fff6dd;
+  --dark-slot-morning: #2a2614;
+  --slot-morning: var(--light-slot-morning);
+
+  --light-slot-afternoon: #e8f3ff;
+  --dark-slot-afternoon: #16222f;
+  --slot-afternoon: var(--light-slot-afternoon);
+
+  --light-slot-evening: #f1ebff;
+  --dark-slot-evening: #241d35;
+  --slot-evening: var(--light-slot-evening);
+
+  --light-slot-night: #e6e9f7;
+  --dark-slot-night: #1c2033;
+  --slot-night: var(--light-slot-night);
+
+  /* The backdrop behind a dialog, and the color of shadows. */
+  --light-scrim: #14171c80;
+  --dark-scrim: #000000b3;
+  --scrim: var(--light-scrim);
+
+  --light-shadow: #14171c1f;
+  --dark-shadow: #00000080;
+  --shadow: var(--light-shadow);
+
+  /* Type scale, in rem so the browser's font size setting is respected. */
+  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --line-height: 1.4;
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: 1.75rem;
+
+  /* Spacing: --space-N is N times 4px. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Corner radii. A pill (999px) and a circle (50%) are shapes and stay literals. */
   --radius: 14px;
   --radius-sm: 8px;
+
+  /* Sizes and layers. */
+  --touch-target: 44px;
+  --nav-height: 64px;
+  --nav-width: 220px;
+  --content-width: 720px;
+  --z-nav: 10;
+  --z-overlay: 20;
+  --z-toast: 30;
 }
+
+/* ---------- Dark theme ---------- */
+
+/*
+ * The two blocks below hold the same declarations: one for a theme chosen with the
+ * toggle, one for the system setting when nothing was chosen. A new color token goes
+ * into the palette above and into both.
+ */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--dark-bg);
+  --surface: var(--dark-surface);
+  --surface-2: var(--dark-surface-2);
+  --text: var(--dark-text);
+  --muted: var(--dark-muted);
+  --border: var(--dark-border);
+  --accent: var(--dark-accent);
+  --accent-text: var(--dark-accent-text);
+  --urgent: var(--dark-urgent);
+  --urgent-bg: var(--dark-urgent-bg);
+  --high: var(--dark-high);
+  --high-bg: var(--dark-high-bg);
+  --medium: var(--dark-medium);
+  --medium-bg: var(--dark-medium-bg);
+  --low: var(--dark-low);
+  --low-bg: var(--dark-low-bg);
+  --slot-morning: var(--dark-slot-morning);
+  --slot-afternoon: var(--dark-slot-afternoon);
+  --slot-evening: var(--dark-slot-evening);
+  --slot-night: var(--dark-slot-night);
+  --scrim: var(--dark-scrim);
+  --shadow: var(--dark-shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: var(--dark-bg);
+    --surface: var(--dark-surface);
+    --surface-2: var(--dark-surface-2);
+    --text: var(--dark-text);
+    --muted: var(--dark-muted);
+    --border: var(--dark-border);
+    --accent: var(--dark-accent);
+    --accent-text: var(--dark-accent-text);
+    --urgent: var(--dark-urgent);
+    --urgent-bg: var(--dark-urgent-bg);
+    --high: var(--dark-high);
+    --high-bg: var(--dark-high-bg);
+    --medium: var(--dark-medium);
+    --medium-bg: var(--dark-medium-bg);
+    --low: var(--dark-low);
+    --low-bg: var(--dark-low-bg);
+    --slot-morning: var(--dark-slot-morning);
+    --slot-afternoon: var(--dark-slot-afternoon);
+    --slot-evening: var(--dark-slot-evening);
+    --slot-night: var(--dark-slot-night);
+    --scrim: var(--dark-scrim);
+    --shadow: var(--dark-shadow);
+  }
+}
+
+/* ---------- Base elements ---------- */
 
 * {
   box-sizing: border-box;
   margin: 0;
 }
 
+/* The bottom padding keeps the tab bar, and the raised Add button, off the page's end. */
 body {
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
-  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: var(--font-size-md) / var(--line-height) var(--font-family);
+  padding-bottom: calc(var(--nav-height) + var(--space-6));
 }
 
 a {
   color: var(--accent);
 }
 
+h1 {
+  font-size: var(--font-size-xl);
+}
+
+h2 {
+  font-size: var(--font-size-lg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Utilities ---------- */
+
+/* Components set their own display, so the hidden attribute needs the last word. */
+[hidden] {
+  display: none !important;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/*
+ * Hidden from the eye, still read by a screen reader. The label of the Add link is
+ * hidden this way on the tab bar and shown again in the sidebar.
+ */
+.visually-hidden,
+.app-nav__link--add .app-nav__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Shell ---------- */
+
 .site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 14px 16px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .site-header a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
   color: var(--text);
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   font-weight: 700;
   text-decoration: none;
 }
 
 .page {
-  max-width: 720px;
-  margin: 20px auto 48px;
-  padding: 20px 16px;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.page > * + * {
+  margin-top: var(--space-3);
+}
+
+/* The navigation: a tab bar along the bottom. On wide screens it becomes a sidebar. */
+.app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  height: var(--nav-height);
+  padding: 0 var(--space-2);
   background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.app-nav__link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.app-nav__link[aria-current="page"] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.app-nav__icon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+/* Add: a round button raised above the bar. */
+.app-nav__link--add {
+  flex: none;
+  width: calc(var(--touch-target) + var(--space-2));
+  height: calc(var(--touch-target) + var(--space-2));
+  margin: calc(var(--space-5) * -1) var(--space-2) 0;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 50%;
+  box-shadow: 0 var(--space-1) var(--space-3) var(--shadow);
+}
+
+/* On its own page Add keeps its colors; the accent color would vanish on the accent. */
+.app-nav__link--add[aria-current="page"] {
+  color: var(--accent-text);
+}
+
+.app-nav__link--add .app-nav__icon {
+  font-size: var(--font-size-2xl);
+}
+
+/* ---------- Components ---------- */
+
+/* Page header */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-header h1 {
+  line-height: 1.2;
+}
+
+.page-header__sub {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.page-header__actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-text);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn--ghost {
+  background: none;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Badges: the name is always in the markup; the color only repeats it. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.badge--urgent {
+  background: var(--urgent-bg);
+  color: var(--urgent);
+}
+
+.badge--high {
+  background: var(--high-bg);
+  color: var(--high);
+}
+
+.badge--medium {
+  background: var(--medium-bg);
+  color: var(--medium);
+}
+
+.badge--low {
+  background: var(--low-bg);
+  color: var(--low);
+}
+
+.badge--slot-morning {
+  background: var(--slot-morning);
+  color: var(--text);
+}
+
+.badge--slot-afternoon {
+  background: var(--slot-afternoon);
+  color: var(--text);
+}
+
+.badge--slot-evening {
+  background: var(--slot-evening);
+  color: var(--text);
+}
+
+.badge--slot-night {
+  background: var(--slot-night);
+  color: var(--text);
+}
+
+/*
+ * Chip. A selected chip takes the colors of its tone, when it has one. Its border has
+ * the color of its background, so it keeps its size without a see-through border.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+}
+
+.chip--on {
+  background: var(--border);
+  color: var(--text);
+  border-color: var(--border);
+  font-weight: 700;
+}
+
+.chip--on.chip--urgent {
+  background: var(--urgent-bg);
+  color: var(--urgent);
+  border-color: var(--urgent-bg);
+}
+
+.chip--on.chip--high {
+  background: var(--high-bg);
+  color: var(--high);
+  border-color: var(--high-bg);
+}
+
+.chip--on.chip--medium {
+  background: var(--medium-bg);
+  color: var(--medium);
+  border-color: var(--medium-bg);
+}
+
+.chip--on.chip--low {
+  background: var(--low-bg);
+  color: var(--low);
+  border-color: var(--low-bg);
+}
+
+/* Card */
+.card {
+  padding: var(--space-3);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
-.page > * + * {
-  margin-top: 10px;
+/* Modal and bottom sheet. The overlay is the backdrop and holds the dialog. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  justify-content: center;
+  background: var(--scrim);
 }
 
-h1 {
-  font-size: 22px;
+.overlay--modal {
+  align-items: center;
+  padding: var(--space-4);
 }
 
-.muted {
+.overlay--sheet {
+  align-items: flex-end;
+}
+
+.modal,
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 var(--space-2) var(--space-8) var(--shadow);
+}
+
+.modal {
+  max-width: 28rem;
+  max-height: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.sheet {
+  max-width: var(--content-width);
+  max-height: 90%;
+  padding: var(--space-5) var(--space-4);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.modal__actions,
+.sheet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Toast: above the tab bar, in the inverted colors of the page. */
+.toast-region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-height) + var(--space-6));
+  z-index: var(--z-toast);
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: var(--content-width);
+  padding: var(--space-2) var(--space-4);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 var(--space-1) var(--space-3) var(--shadow);
+  pointer-events: auto;
+}
+
+.toast__actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+/* A button on a toast follows the toast's colors, whatever its variant. */
+.toast .btn {
+  background: none;
+  color: inherit;
+  border-color: currentColor;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+}
+
+.empty-state__text {
   color: var(--muted);
+}
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Skeleton loader */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton__line {
+  height: var(--space-3);
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton__line:last-child {
+  width: 60%;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ---------- Style guide ---------- */
+
+.sg-section {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.sg-section > * + * {
+  margin-top: var(--space-3);
+}
+
+.sg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--space-2);
+}
+
+.sg-swatch {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.sg-swatch__color {
+  height: var(--space-10);
+  border-bottom: 1px solid var(--border);
+}
+
+.sg-swatch__name {
+  padding: var(--space-1) var(--space-2);
+}
+
+.sg-space {
+  height: var(--space-3);
+  background: var(--accent);
+}
+
+.sg-radius {
+  width: calc(var(--space-12) * 2);
+  height: var(--space-12);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+/*
+ * A stage boxes a component that is fixed to the screen in real use. The transform
+ * makes the stage the containing block of its fixed descendants, so the component's
+ * own CSS is shown, inside the box.
+ */
+.sg-stage {
+  position: relative;
+  height: 18rem;
+  overflow: hidden;
+  transform: translateZ(0);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* ---------- Wide screens: the tab bar becomes a sidebar ---------- */
+
+@media (min-width: 900px) {
+  body {
+    background: var(--bg);
+    padding-left: var(--nav-width);
+    padding-bottom: 0;
+  }
+
+  .page {
+    margin: var(--space-5) auto var(--space-12);
+    padding: var(--space-5) var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .app-nav {
+    top: 0;
+    right: auto;
+    width: var(--nav-width);
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+    padding: var(--space-4) var(--space-3);
+    border-top: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .app-nav__link {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-md);
+  }
+
+  .app-nav__link--add {
+    width: auto;
+    height: auto;
+    margin: var(--space-2) 0;
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+  }
+
+  .app-nav__link--add .app-nav__icon {
+    font-size: var(--font-size-lg);
+  }
+
+  .app-nav__link--add .app-nav__label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+
+  .toast-region {
+    bottom: var(--space-6);
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton__line {
+    animation: none;
+  }
 }

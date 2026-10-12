@@ -1,8 +1,14 @@
 import type { Response } from 'express';
+import type { NavId } from './ui.ts';
 
-/** What a page hands to the layout: its title, plus whatever the fragment needs. */
+/**
+ * What a page hands to the layout: its title, the navigation item it belongs to, plus
+ * whatever the fragment needs. A page that belongs to no navigation item leaves `nav`
+ * out, and then no link is marked as the current page.
+ */
 export interface PageLocals {
   title: string;
+  nav?: NavId;
   [key: string]: unknown;
 }
 

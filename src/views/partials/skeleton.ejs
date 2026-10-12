@@ -1,0 +1,11 @@
+<%#
+  skeleton: { lines?, label? }
+  `lines` is how many bars to draw (3). `label` is what a screen reader hears
+  ("Loading"); the bars themselves are decoration.
+-%>
+<div class="skeleton" role="status">
+  <span class="visually-hidden"><%= skeleton.label ?? 'Loading' %></span>
+<% for (let line = 0; line < (skeleton.lines ?? 3); line += 1) { -%>
+  <div class="skeleton__line" aria-hidden="true"></div>
+<% } -%>
+</div>

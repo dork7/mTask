@@ -1,0 +1,13 @@
+<%#
+  toast: { message, actions? }
+  `actions` is HTML built by the caller. The toast brings its own live region, so it
+  is announced wherever it is rendered.
+-%>
+<div class="toast-region" aria-live="polite">
+  <div class="toast">
+    <span class="toast__message"><%= toast.message %></span>
+<% if (toast.actions) { -%>
+    <span class="toast__actions"><%- toast.actions %></span>
+<% } -%>
+  </div>
+</div>

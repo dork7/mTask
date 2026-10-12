@@ -1,0 +1,22 @@
+<%#
+  button: { label, variant?, href?, type?, attrs? }
+  variant: 'primary' (default) or 'ghost'. With `href` it is a link that looks like a
+  button. `attrs` are extra attributes; their names are written by developers and are
+  never taken from a request.
+-%>
+<%
+  const variant = button.variant ?? 'primary';
+  if (variant !== 'primary' && variant !== 'ghost') {
+    throw new Error(`button: unknown variant "${variant}"`);
+  }
+  const attrs = Object.entries(button.attrs ?? {});
+  for (const [name] of attrs) {
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error(`button: bad attribute name "${name}"`);
+  }
+  const classes = variant === 'ghost' ? 'btn btn--ghost' : 'btn';
+-%>
+<% if (button.href) { -%>
+<a class="<%= classes %>" href="<%= button.href %>"<% for (const [name, value] of attrs) { %> <%= name %>="<%= value %>"<% } %>><%= button.label %></a>
+<% } else { -%>
+<button type="<%= button.type ?? 'button' %>" class="<%= classes %>"<% for (const [name, value] of attrs) { %> <%= name %>="<%= value %>"<% } %>><%= button.label %></button>
+<% } -%>

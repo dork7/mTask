@@ -1,0 +1,10 @@
+<%#
+  chip: { label, selected?, tone? }
+  `tone` is a priority id; a selected chip takes that priority's colors.
+-%>
+<%
+  const classes = ['chip'];
+  if (chip.selected) classes.push('chip--on');
+  if (chip.tone) classes.push(`chip--${ui.priority(chip.tone).id}`);
+-%>
+<span class="<%= classes.join(' ') %>"><%= chip.label %></span>
