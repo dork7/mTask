@@ -1,0 +1,169 @@
+<%#
+  The style guide: the tokens, then every component partial under a heading that names
+  it. Each block is a section.sg-section whose first child is its h2; sections are
+  never nested. An inline style is allowed on this page only, and only to point one
+  property at a token.
+-%>
+<%
+  const colorGroups = [
+    { label: 'Page', names: ['bg', 'surface', 'surface-2', 'text', 'muted', 'border', 'accent', 'accent-text'] },
+    { label: 'Priorities', names: ['urgent', 'urgent-bg', 'high', 'high-bg', 'medium', 'medium-bg', 'low', 'low-bg'] },
+    { label: 'Slots', names: ['slot-morning', 'slot-afternoon', 'slot-evening', 'slot-night'] },
+    { label: 'Overlays', names: ['scrim', 'shadow'] },
+  ];
+  const fontSizes = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+  const spaces = [1, 2, 3, 4, 5, 6, 8, 10, 12];
+  const radii = ['radius', 'radius-sm'];
+-%>
+<h1>Style guide</h1>
+<p class="muted">The tokens and components every screen is built from. Use the toggle in the header to see both themes.</p>
+
+<section class="sg-section">
+  <h2>Colors</h2>
+<% for (const group of colorGroups) { -%>
+  <p class="muted"><%= group.label %></p>
+  <div class="sg-swatches">
+<% for (const name of group.names) { -%>
+    <div class="sg-swatch">
+      <div class="sg-swatch__color" style="background: var(--<%= name %>)"></div>
+      <div class="sg-swatch__name">--<%= name %></div>
+    </div>
+<% } -%>
+  </div>
+<% } -%>
+</section>
+
+<section class="sg-section">
+  <h2>Type scale</h2>
+<% for (const size of fontSizes) { -%>
+  <p style="font-size: var(--font-size-<%= size %>)">--font-size-<%= size %>: Submit expense report</p>
+<% } -%>
+</section>
+
+<section class="sg-section">
+  <h2>Spacing</h2>
+<% for (const step of spaces) { -%>
+  <div class="sg-row">
+    <div class="sg-space" style="width: var(--space-<%= step %>)"></div>
+    <span class="muted">--space-<%= step %></span>
+  </div>
+<% } -%>
+</section>
+
+<section class="sg-section">
+  <h2>Radii</h2>
+  <div class="sg-row">
+<% for (const name of radii) { -%>
+    <div>
+      <div class="sg-radius" style="border-radius: var(--<%= name %>)"></div>
+      <span class="muted">--<%= name %></span>
+    </div>
+<% } -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Page header</h2>
+  <%- include('../partials/page-header', { pageHeader: {
+    heading: 'Tasks',
+    sub: 'Monday, 12 Oct',
+    actions: include('../partials/button', { button: { label: 'Filter', variant: 'ghost' } }),
+  } }) -%>
+</section>
+
+<section class="sg-section">
+  <h2>Button</h2>
+  <div class="sg-row">
+    <%- include('../partials/button', { button: { label: 'Primary' } }) -%>
+    <%- include('../partials/button', { button: { label: 'Ghost', variant: 'ghost' } }) -%>
+    <%- include('../partials/button', { button: { label: 'Link as button', href: '/' } }) -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Priority badge</h2>
+  <div class="sg-row">
+<% for (const item of ui.priorities) { -%>
+    <%- include('../partials/priority-badge', { priorityBadge: { priority: item.id } }) -%>
+<% } -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Slot badge</h2>
+  <div class="sg-row">
+<% for (const item of ui.slots) { -%>
+    <%- include('../partials/slot-badge', { slotBadge: { slot: item.id } }) -%>
+<% } -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Chip</h2>
+  <div class="sg-row">
+    <%- include('../partials/chip', { chip: { label: 'Not selected' } }) -%>
+    <%- include('../partials/chip', { chip: { label: 'Selected', selected: true } }) -%>
+<% for (const item of ui.priorities) { -%>
+    <%- include('../partials/chip', { chip: { label: item.label, selected: true, tone: item.id } }) -%>
+<% } -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Card</h2>
+  <%- include('../partials/card', { card: {
+    body: '<p><b>Submit expense report</b></p><p class="muted">Admin, about 45 min</p>',
+  } }) -%>
+</section>
+
+<section class="sg-section">
+  <h2>Modal</h2>
+  <div class="sg-stage">
+    <%- include('../partials/modal', { modal: {
+      id: 'sg-modal',
+      heading: 'Delete this task?',
+      body: '<p>It cannot be brought back.</p>',
+      actions: include('../partials/button', { button: { label: 'Cancel', variant: 'ghost' } })
+        + include('../partials/button', { button: { label: 'Delete' } }),
+      open: true,
+    } }) -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Bottom sheet</h2>
+  <div class="sg-stage">
+    <%- include('../partials/bottom-sheet', { bottomSheet: {
+      id: 'sg-sheet',
+      heading: 'Submit expense report',
+      body: '<p class="muted">Admin, about 45 min, today at 2:00 PM</p>',
+      actions: include('../partials/button', { button: { label: 'Snooze', variant: 'ghost' } })
+        + include('../partials/button', { button: { label: 'Start' } }),
+      open: true,
+    } }) -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Toast</h2>
+  <div class="sg-stage">
+    <%- include('../partials/toast', { toast: {
+      message: 'Task saved',
+      actions: include('../partials/button', { button: { label: 'Undo', variant: 'ghost' } }),
+    } }) -%>
+  </div>
+</section>
+
+<section class="sg-section">
+  <h2>Empty state</h2>
+  <%- include('../partials/empty-state', { emptyState: {
+    heading: 'No tasks yet',
+    text: 'Add one with a photo, your voice or the keyboard.',
+    actions: include('../partials/button', { button: { label: 'Add a task', href: '/add' } }),
+  } }) -%>
+</section>
+
+<section class="sg-section">
+  <h2>Skeleton loader</h2>
+  <%- include('../partials/skeleton', { skeleton: {} }) -%>
+</section>

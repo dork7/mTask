@@ -1,0 +1,13 @@
+<%#
+  The navigation landmark of every page. Reads `ui.navItems` and the page's `nav`
+  local: the id of the item the page belongs to, or nothing. The Add label stays in
+  the markup when the tab bar hides it, so "Add" remains the link's name.
+-%>
+<nav class="app-nav" aria-label="Main">
+<% for (const item of ui.navItems) { -%>
+  <a class="app-nav__link<%= item.id === 'add' ? ' app-nav__link--add' : '' %>" href="<%= item.href %>"<% if (item.id === locals.nav) { %> aria-current="page"<% } %>>
+    <span class="app-nav__icon" aria-hidden="true"><%= item.glyph %></span>
+    <span class="app-nav__label"><%= item.label %></span>
+  </a>
+<% } -%>
+</nav>

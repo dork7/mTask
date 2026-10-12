@@ -1,0 +1,23 @@
+<%#
+  bottomSheet: { id, heading, body, actions?, open? }
+  `body` and `actions` are HTML built by the caller. The overlay carries the id and is
+  hidden unless `open` is true. Opening, closing and focus come with the first job
+  that uses a sheet.
+-%>
+<%
+  if (typeof bottomSheet.id !== 'string' || bottomSheet.id === '') {
+    throw new Error('bottomSheet: id is required');
+  }
+  if (typeof bottomSheet.heading !== 'string' || bottomSheet.heading === '') {
+    throw new Error('bottomSheet: heading is required');
+  }
+-%>
+<div class="overlay overlay--sheet" id="<%= bottomSheet.id %>"<% if (bottomSheet.open !== true) { %> hidden<% } %>>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="<%= bottomSheet.id %>-title">
+    <h2 class="sheet__title" id="<%= bottomSheet.id %>-title"><%= bottomSheet.heading %></h2>
+    <div class="sheet__body"><%- bottomSheet.body %></div>
+<% if (bottomSheet.actions) { -%>
+    <div class="sheet__actions"><%- bottomSheet.actions %></div>
+<% } -%>
+  </div>
+</div>

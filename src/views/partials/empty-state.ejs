@@ -1,0 +1,13 @@
+<%#
+  emptyState: { heading, text?, actions? }
+  `actions` is HTML built by the caller.
+-%>
+<div class="empty-state">
+  <h2 class="empty-state__heading"><%= emptyState.heading %></h2>
+<% if (emptyState.text) { -%>
+  <p class="empty-state__text"><%= emptyState.text %></p>
+<% } -%>
+<% if (emptyState.actions) { -%>
+  <div class="empty-state__actions"><%- emptyState.actions %></div>
+<% } -%>
+</div>

@@ -1,0 +1,46 @@
+<%#
+  The theme script. The layout includes it in the head, before the stylesheet link, so
+  a saved theme is on the root element before the first paint. It stays inline: an
+  external or deferred script would apply the theme too late. The storage key "theme"
+  and its values "light" and "dark" are shared with the settings page.
+-%>
+<script>
+(function () {
+  var root = document.documentElement;
+
+  function isTheme(value) {
+    return value === 'light' || value === 'dark';
+  }
+
+  /* With nothing set on the root, the system setting is the theme in effect. */
+  function themeInEffect() {
+    var chosen = root.getAttribute('data-theme');
+    if (isTheme(chosen)) return chosen;
+    var systemDark = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return systemDark ? 'dark' : 'light';
+  }
+
+  try {
+    var saved = localStorage.getItem('theme');
+    if (isTheme(saved)) root.setAttribute('data-theme', saved);
+  } catch (error) {
+    /* Storage is blocked: the system setting decides. */
+  }
+
+  /* On the document, because the toggle does not exist yet when this runs. */
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target || typeof target.closest !== 'function') return;
+    if (!target.closest('[data-theme-toggle]')) return;
+
+    var next = themeInEffect() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('theme', next);
+    } catch (error) {
+      /* Storage is blocked: the choice still holds for this page. */
+    }
+  });
+})();
+</script>

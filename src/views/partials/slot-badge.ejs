@@ -1,0 +1,6 @@
+<%#
+  slotBadge: { slot }
+  `slot` is a slot id. An unknown id throws, so a badge never renders without its name.
+-%>
+<% const item = ui.slot(slotBadge.slot); -%>
+<span class="badge badge--slot-<%= item.id %>"><%= item.label %></span>
