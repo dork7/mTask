@@ -6,3 +6,4 @@ coverage
 .claude
 factory/*.jsonl
 factory/board.json
+/data/
