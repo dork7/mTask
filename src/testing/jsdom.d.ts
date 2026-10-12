@@ -35,12 +35,34 @@ declare module 'jsdom' {
     cloneNode(deep?: boolean): DomElement;
     remove(): void;
     click(): void;
+    dispatchEvent(event: DomEvent): boolean;
+  }
+
+  export interface DomFile {
+    readonly name: string;
+    readonly type: string;
+  }
+
+  export interface DomFileList {
+    readonly length: number;
+    readonly [index: number]: DomFile;
+  }
+
+  /** An `<input type="file">`. */
+  export interface DomFileInput extends DomElement {
+    value: string;
+    readonly files: DomFileList;
+  }
+
+  export interface DomEvent {
+    readonly type: string;
   }
 
   export interface DomDocument {
     readonly documentElement: DomElement;
     readonly head: DomElement;
     readonly body: DomElement;
+    readonly activeElement: DomElement | null;
     getElementById(id: string): DomElement | null;
     querySelector(selector: string): DomElement | null;
     querySelectorAll(selector: string): DomNodeList;
@@ -66,6 +88,15 @@ declare module 'jsdom' {
     matchMedia?: (query: string) => DomMediaQueryList;
     /** jsdom reports an exception no script caught as an `error` event on the window. */
     addEventListener(type: 'error', listener: (event: DomErrorEvent) => void): void;
+    readonly File: new (parts: string[], name: string, options?: { type?: string }) => DomFile;
+    readonly Event: new (type: string, init?: { bubbles?: boolean }) => DomEvent;
+    /** jsdom has neither of the two object URL functions; a test puts them here. */
+    readonly URL: {
+      createObjectURL?: (file: DomFile) => string;
+      revokeObjectURL?: (url: string) => void;
+    };
+    /** Runs a script in the page, as a `<script>` element would. */
+    eval(source: string): unknown;
     close(): void;
   }
 

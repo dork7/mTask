@@ -1,5 +1,6 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
@@ -87,17 +88,25 @@ describe('project commands (AC6)', () => {
   // The child is stopped after LOAD_TIMEOUT_MS, so a createApp() that keeps the
   // process alive fails this test instead of hanging the suite. spawnSync blocks,
   // and Vitest cannot interrupt it; the test's own timeout only has to be longer.
+  // The app gets an in-memory database and an uploads folder that does not exist and
+  // is never created, passed as the argument after the script.
   it(
     'plain Node, the runtime of the dev command, can load the app',
     () => {
-      const script = "const { createApp } = await import('./src/app.ts'); createApp();";
-      const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      const uploadsDir = path.join(tmpdir(), `mtask-plain-node-${process.pid}`, 'uploads');
+      const script = [
+        "const { createApp } = await import('./src/app.ts');",
+        "const { openDatabase } = await import('./src/db/database.ts');",
+        "createApp({ db: openDatabase(':memory:'), uploadsDir: process.argv[1] });",
+      ].join(' ');
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, uploadsDir], {
         cwd: rootDir,
         encoding: 'utf8',
         timeout: LOAD_TIMEOUT_MS,
       });
 
       expect(result.status, describeFailure(result)).toBe(0);
+      expect(existsSync(path.dirname(uploadsDir))).toBe(false);
     },
     LOAD_TIMEOUT_MS + 5_000,
   );

@@ -54,6 +54,16 @@ export function getDatabasePath(env: NodeJS.ProcessEnv = process.env): string {
   return path.resolve(rootDir, raw);
 }
 
+/**
+ * The folder uploaded photos are stored in: `UPLOADS_DIR`, or `data/uploads` when it is
+ * unset or blank. A relative value starts at the repo root, never at the working folder.
+ */
+export function getUploadsDir(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env.UPLOADS_DIR?.trim() ?? '';
+  if (raw === '') return path.join(rootDir, 'data', 'uploads');
+  return path.resolve(rootDir, raw);
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }

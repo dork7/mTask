@@ -1,6 +1,13 @@
-import { JSDOM, type DomDocument, type DomElement, type DomWindow } from 'jsdom';
+import {
+  JSDOM,
+  type DomDocument,
+  type DomElement,
+  type DomFile,
+  type DomFileInput,
+  type DomWindow,
+} from 'jsdom';
 
-export type { DomDocument, DomElement, DomWindow };
+export type { DomDocument, DomElement, DomFile, DomFileInput, DomWindow };
 
 /** The address the pages are opened at. localStorage needs a real origin. */
 const PAGE_URL = 'http://localhost/';
@@ -26,7 +33,8 @@ export function parseHtml(html: string): DomDocument {
 
 /**
  * Parses HTML and runs its inline scripts, as a browser would on load. External
- * resources (the stylesheet, any script with `src`) are not loaded.
+ * resources (the stylesheet, any script with `src`) are not loaded; `runLinkedScripts`
+ * in `page.ts` runs the linked scripts.
  */
 export function openPage(html: string, options: OpenPageOptions = {}): DomWindow {
   const { savedTheme, systemDark, storageThrows } = options;
@@ -68,6 +76,68 @@ export function openPage(html: string, options: OpenPageOptions = {}): DomWindow
  */
 export function scriptErrors(window: DomWindow): string[] {
   return scriptErrorsByWindow.get(window) ?? [];
+}
+
+/** The object URLs a page made and released, as `stubObjectUrls` recorded them. */
+export interface ObjectUrls {
+  /** The files `createObjectURL` was called with, in order. */
+  created: DomFile[];
+  /** The URLs `revokeObjectURL` was called with, in order. */
+  revoked: string[];
+  /** The URL the call number `index` of `createObjectURL` returned, counting from 0. */
+  urlOf(index: number): string;
+}
+
+/**
+ * Gives the window `URL.createObjectURL` and `URL.revokeObjectURL`, which jsdom does
+ * not have, and records what they are called with.
+ */
+export function stubObjectUrls(window: DomWindow): ObjectUrls {
+  const urls: ObjectUrls = {
+    created: [],
+    revoked: [],
+    urlOf: (index) => `blob:http://localhost/${index}`,
+  };
+  window.URL.createObjectURL = (file) => {
+    urls.created.push(file);
+    return urls.urlOf(urls.created.length - 1);
+  };
+  window.URL.revokeObjectURL = (url) => {
+    urls.revoked.push(url);
+  };
+  return urls;
+}
+
+/**
+ * Puts a file into a file input, or with `null` empties it, without telling the page.
+ * jsdom has no file picker and no way to build a `FileList`, so `files` and `value` are
+ * replaced on this one element. A script that sets `value` to the empty string, which
+ * is how a page empties a file input, removes the replacement and leaves jsdom's own
+ * empty input.
+ */
+export function setChosenFile(input: DomFileInput, file: DomFile | null): void {
+  Reflect.deleteProperty(input, 'files');
+  Reflect.deleteProperty(input, 'value');
+  if (file === null) return;
+
+  const files = { 0: file, length: 1 };
+  Object.defineProperty(input, 'files', { configurable: true, get: () => files });
+  Object.defineProperty(input, 'value', {
+    configurable: true,
+    get: () => `C:\\fakepath\\${file.name}`,
+    set(value: string) {
+      // A browser refuses any other value for a file input.
+      if (value !== '') throw new Error('The value of a file input can only be set to the empty string');
+      setChosenFile(input, null);
+    },
+  });
+}
+
+/** Chooses a file in a file input as a user would, or with `null` clears the choice: the page is told. */
+export function chooseFile(window: DomWindow, input: DomFileInput, file: DomFile | null): void {
+  setChosenFile(input, file);
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  input.dispatchEvent(new window.Event('change', { bubbles: true }));
 }
 
 /** Every element under `root` that matches `selector`, as an array. */

@@ -11,7 +11,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 001-scaffold: Express + EJS server, test runner and project commands
 - [x] 002-design-system: design tokens, app shell and the style-guide page
 - [x] 003-data-model: tasks, sources and settings tables with CRUD helpers
-- [ ] 004-photo-upload: Add screen with the Photo tab and image upload
+- [x] 004-photo-upload: Add screen with the Photo tab and image upload
 - [ ] 005-analyzer: AI analyzer that returns several tasks from a photo or text
 - [ ] 006-review-drafts: draft tasks and the review-before-save screen
 - [ ] 007-voice-and-text: Voice and Type tabs on the Add screen

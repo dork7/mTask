@@ -655,6 +655,81 @@ h2 {
   }
 }
 
+/* Tabs: the ways to add a task. The selected tab takes the accent color. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tabs .btn[aria-selected="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tab-panel > * + * {
+  margin-top: var(--space-3);
+}
+
+/* Notice: what happened to the last thing the user sent. The text says it; the color repeats it. */
+.notice {
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.notice--error {
+  background: var(--urgent-bg);
+  border-color: var(--urgent);
+}
+
+/* A photo: the one just saved, and the preview of the one chosen. */
+.photo {
+  display: block;
+  max-width: 100%;
+  max-height: 24rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Photo form */
+.photo-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.photo-form__label {
+  font-weight: 700;
+}
+
+.photo-form__input {
+  max-width: 100%;
+  font: inherit;
+}
+
+/* The browser's own "choose file" button, given the size and look of a ghost button. */
+.photo-form__input::file-selector-button {
+  min-height: var(--touch-target);
+  margin-right: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* ---------- Style guide ---------- */
 
 .sg-section {
