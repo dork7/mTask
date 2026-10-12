@@ -168,3 +168,87 @@ Nothing in the spec was skipped. Three things differ from the design or the plan
    small radius. Job 002 uses it.
 
 `build.md` is committed on the branch in its own commit after the code commit.
+
+## Round 1
+
+Reviews read: `round-1/review-code.md` (CHANGES, 2 findings) and
+`round-1/review-spec.md` (CHANGES, 2 findings). All four were right and all four are
+fixed in commit `7022a5f`. Only tests and the error log changed; no file outside
+`src/*.test.ts` and `docs/errors/` was touched, because the code was already correct and
+the findings were about tests that did not protect it.
+
+For each fix I broke the behaviour in place, saw the named test fail, and restored the
+file.
+
+| Finding | What I did | Fails when (seen) |
+|---|---|---|
+| **code 1**: `src/project.test.ts`, `spawnSync` with no `timeout` hangs the suite when the child does not exit | `spawnSync` now gets `timeout: LOAD_TIMEOUT_MS` (10 s). The test's own timeout is 15 s, so the assertion message is what shows, not a Vitest timeout. The message comes from `describeFailure(result)`: `result.error`, then `result.signal`, then stderr. | `app.listen(0)` added to `createApp`: the run ended by itself in 10.15 s, exit 1, with `the child process did not finish: spawnSync /usr/local/bin/node ETIMEDOUT`. No child process was left behind. |
+| **code 2**: `src/project.test.ts`, `expect(result.stderr).toBe('')` depends on the developer's shell | Assertion removed. The test asserts only `expect(result.status, describeFailure(result)).toBe(0)`. | `NODE_OPTIONS=--inspect=0 vitest run src/project.test.ts` now passes (5 passed). An import without `.ts` still fails the test, as before. |
+| **spec 1**: `src/server.test.ts`, nothing fails when `getPort()` runs before `loadEnv()` | New test "reads the port after it has loaded .env": the `loadEnv` spy sets `PORT` to 4321, as a `.env` file would, and `listen` must be called with 4321. The plan's "loads .env before it listens" test is kept. | lines 4 and 5 of `server.ts` swapped: `expected 3000 to be 4321`. |
+| **spec 2**: nothing ties the loaded file to `.env` at the repo root | Two new tests. `src/config.test.ts` "loads .env at the repo root when it is given no file" spies on `process.loadEnvFile` (so no real `.env` is read) and asserts the argument is `path.join(rootDir, '.env')`. `src/server.test.ts` "loads the default file, .env at the repo root" asserts `loadEnv` is called with no arguments. | default changed to `.env.local`: the config test failed. `server.ts` changed to `loadEnv("config/settings.env")`: the server test failed. |
+
+Not a finding, fixed anyway: the code review found that replacing the `/^\d+$/` check in
+`getPort` with a bare `Number(raw)` left every test passing. `'1e3'` and `'0x50'` are
+added to the "throws for PORT=..." cases; with that mutation both now fail.
+
+Also in the commit: `afterEach` in `src/server.test.ts` uses `vi.resetAllMocks()`
+instead of `vi.clearAllMocks()`, so the implementation given to the `loadEnv` spy in one
+test cannot reach the next. Two entries added to the error log:
+`docs/errors/spawnsync-without-timeout-hangs-suite.md` and
+`docs/errors/child-stderr-must-be-empty-assertion.md`.
+
+Left alone, as the reviews did: the server listens on every interface while the start-up
+line says `localhost` (Express's default for `listen(port)`), and `--radius-sm` is
+declared and unused.
+
+### Acceptance criteria, rows added or changed this round
+
+| Criterion | Test | Result |
+|---|---|---|
+| AC4: `PORT` is read from `.env` | `src/server.test.ts` > server (AC4) > reads the port after it has loaded .env | PASS |
+| AC4: `PORT` is read from `.env` | `src/server.test.ts` > server (AC4) > loads the default file, .env at the repo root | PASS |
+| AC4: `PORT` is read from `.env` | `src/config.test.ts` > loadEnv (AC4) > loads .env at the repo root when it is given no file | PASS |
+| AC4: listens on `PORT` | `src/config.test.ts` > getPort (AC4) > throws for PORT=1e3 and names the value; > throws for PORT=0x50 and names the value | PASS |
+| AC6: plain Node can load the app | `src/project.test.ts` > project commands (AC6) > plain Node, the runtime of the dev command, can load the app (now with a timeout, exit code only) | PASS |
+
+### Test run
+
+`yarn build`:
+
+```
+yarn run v1.22.22
+$ tsc --noEmit
+Done in 0.89s.
+```
+
+`yarn test`:
+
+```
+ RUN  v5.0.1 /Users/hamza/Documents/mTask
+
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  14:15:54
+   Duration  254ms (tests 41%, transform 28%, import 28%, worker 2%)
+
+Done in 0.94s.
+```
+
+Verification loop:
+
+- Build: `yarn build`, exit 0, no errors.
+- Tests: `yarn test`, 4 files, 37 passed (32 before, 5 added), 0 failed, none skipped.
+- Lint: Project facts says "none".
+- Diff: this round changed `src/config.test.ts`, `src/project.test.ts`,
+  `src/server.test.ts` and added two files under `docs/errors/`. No `.only`, `.skip`,
+  TODO, debug output, secret or machine path.
+
+```
+VERIFICATION
+Build: PASS
+Tests: PASS   (37 passed, 0 failed)
+Lint:  SKIPPED
+Diff:  PASS
+Verdict: READY
+```
