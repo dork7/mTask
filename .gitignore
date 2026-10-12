@@ -3,13 +3,8 @@ dist
 .superpowers
 coverage
 .env
-<<<<<<< Updated upstream
-.claude
+.claude/settings.local.json
+.claude/worktrees/
 factory/*.jsonl
 factory/board.json
-=======
-# .claude
-# factory/*.jsonl
-# factory/board.json
 /data/
->>>>>>> Stashed changes
