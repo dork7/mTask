@@ -712,7 +712,8 @@ function files(job) {
   // A feature job writes these three in order; a cleanup job has none of them.
   const upfront = ['spec', 'design', 'plan'], at = upfront.indexOf(job.stage);
   if (job.type !== 'cleanup') list.push(...upfront.slice(0, at < 0 ? 3 : at).map(s => s + '.md'));
-  if (job.round > 0) list.push('build.md');
+  // A job is reviewed only when asked, so build.md is there once the build is done.
+  if (job.round > 0 || ['review', 'approve', 'needs-human', 'merged'].includes(job.stage)) list.push('build.md');
   rounds(job).forEach((reviews, i) => {
     for (const [who, v] of Object.entries(reviews)) if (v === 'PASS' || v === 'CHANGES') list.push(`round-${i + 1}/review-${who}.md`);
   });
