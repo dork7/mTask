@@ -57,7 +57,6 @@ const PHOTO_BYTES = Buffer.from([0x89, 0x50, 0x4e]);
 /** The columns of a task that an analysis never sets. */
 const UNSET_COLUMNS = [
   'image_path',
-  'time_slot',
   'actual_minutes',
   'scheduled_start',
   'scheduled_end',

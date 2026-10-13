@@ -325,11 +325,11 @@ describe('the settings table (AC6)', () => {
     expect(columns.map((column) => column.pk)).toEqual([1, 0]);
   });
 
-  it('holds the working hours, 09:00 to 22:00, and nothing else when it is created', () => {
-    const rows = db.prepare('SELECT key, value FROM settings').all();
+  it('holds the slot rules and the working hours, 09:00 to 22:00, and nothing else when it is created', () => {
+    const rows = db.prepare('SELECT key, value FROM settings ORDER BY key').all();
 
-    expect(rows.map((row) => row.key)).toEqual(['working_hours']);
-    expect(JSON.parse(String(rows[0].value))).toEqual({ start: '09:00', end: '22:00' });
+    expect(rows.map((row) => row.key)).toEqual(['slot_rules', 'working_hours']);
+    expect(JSON.parse(String(rows[1].value))).toEqual({ start: '09:00', end: '22:00' });
   });
 
   it('rejects a value that is not JSON', () => {

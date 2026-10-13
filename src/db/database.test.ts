@@ -103,7 +103,7 @@ describe('openDatabase (AC1)', () => {
     expect(getTask(second, task.id)).toStrictEqual(task);
     expect(count(second, 'tasks')).toBe(1);
     expect(count(second, 'sources')).toBe(1);
-    expect(count(second, 'settings')).toBe(1);
+    expect(count(second, 'settings')).toBe(2);
   });
 
   it('opens a database in memory with the schema', () => {

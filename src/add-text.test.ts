@@ -51,7 +51,6 @@ const milk: AnalyzedTask = {
 /** The columns of a task that an analysis never sets. */
 const UNSET_COLUMNS = [
   'image_path',
-  'time_slot',
   'actual_minutes',
   'scheduled_start',
   'scheduled_end',

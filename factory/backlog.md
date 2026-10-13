@@ -15,7 +15,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 005-analyzer: AI analyzer that returns several tasks from a photo or text
 - [x] 006-review-drafts: draft tasks and the review-before-save screen
 - [x] 007-voice-and-text: Voice and Type tabs on the Add screen
-- [ ] 008-slot-rules: priority and time-slot rules
+- [x] 008-slot-rules: priority and time-slot rules
 - [ ] 009-scheduler: auto-scheduler with gap filling, bumping and overflow
 - [ ] 010-task-list: task list with filters, sort, edit and delete
 - [ ] 011-overdue: overdue view with reschedule and mark done
