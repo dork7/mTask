@@ -141,6 +141,100 @@ export function chooseFile(window: DomWindow, input: DomFileInput, file: DomFile
   input.dispatchEvent(new window.Event('change', { bubbles: true }));
 }
 
+/** What a page hears from a recognition: the three events `public/js/add-voice.js` listens for. */
+export type SpeechEventType = 'result' | 'end' | 'error';
+
+/** One recognition a page made from a stubbed constructor. */
+export interface StubRecognition {
+  /** What the page set them to; `undefined` until it does. */
+  continuous: unknown;
+  interimResults: unknown;
+  /** How often the page called `start()` and `stop()`. */
+  startCalls: number;
+  stopCalls: number;
+  /** Calls the handler the page put on `on<type>` with this event. Does nothing when the page set none. */
+  fire(type: SpeechEventType, event?: object): void;
+}
+
+export interface SpeechStub {
+  /** Every recognition the page made, in order. */
+  instances: StubRecognition[];
+  /** When set, the next `start()` throws it, once. */
+  startError: Error | null;
+}
+
+/** One result of a `result` event, as a test writes it. */
+export interface SpokenResult {
+  transcript: string;
+  isFinal: boolean;
+}
+
+/**
+ * A `result` event as a recognition fires it: every result is a list of two
+ * alternatives, the spoken one first, with `isFinal` on the list, and `resultIndex` is
+ * the index of the last result. A page that reads the second alternative, skips a result
+ * that is not final, or starts at `resultIndex` gets another text than the one spoken.
+ */
+export function resultEvent(results: SpokenResult[]): object {
+  return {
+    resultIndex: Math.max(results.length - 1, 0),
+    results: results.map(({ transcript, isFinal }) =>
+      Object.assign(
+        [
+          { transcript, confidence: 0.9 },
+          { transcript: 'a second alternative', confidence: 0.1 },
+        ],
+        { isFinal },
+      ),
+    ),
+  };
+}
+
+/**
+ * Gives the window a speech recognition constructor, which jsdom does not have, under
+ * one of the two names a browser uses, and records the recognitions the page makes from
+ * it. Nothing is ever heard: a test fires the events itself, `end` after a `stop()`
+ * included.
+ */
+export function stubSpeechRecognition(
+  window: DomWindow,
+  name: 'SpeechRecognition' | 'webkitSpeechRecognition' = 'SpeechRecognition',
+): SpeechStub {
+  const stub: SpeechStub = { instances: [], startError: null };
+
+  class Recognition implements StubRecognition {
+    continuous: unknown = undefined;
+    interimResults: unknown = undefined;
+    onresult: ((event: object) => void) | null = null;
+    onend: ((event: object) => void) | null = null;
+    onerror: ((event: object) => void) | null = null;
+    startCalls = 0;
+    stopCalls = 0;
+
+    constructor() {
+      stub.instances.push(this);
+    }
+
+    start(): void {
+      this.startCalls += 1;
+      const error = stub.startError;
+      stub.startError = null;
+      if (error !== null) throw error;
+    }
+
+    stop(): void {
+      this.stopCalls += 1;
+    }
+
+    fire(type: SpeechEventType, event: object = {}): void {
+      this[`on${type}`]?.(event);
+    }
+  }
+
+  window[name] = Recognition;
+  return stub;
+}
+
 /** Every element under `root` that matches `selector`, as an array. */
 export function all(root: DomDocument | DomElement, selector: string): DomElement[] {
   return [...root.querySelectorAll(selector)];

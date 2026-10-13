@@ -6,7 +6,7 @@ import type { Task } from '../db/tasks.ts';
 import { renderPage } from '../render.ts';
 import {
   LOW_CONFIDENCE,
-  analyzePhotoSource,
+  analyzeSource,
   confirmDrafts,
   discardDrafts,
   draftField,
@@ -123,7 +123,7 @@ function renderReview(
 }
 
 /**
- * The review of the drafts of one source: the page, and the posts that analyze the photo
+ * The review of the drafts of one source: the page, and the posts that analyze the source
  * again, confirm the drafts, remove one and discard them all. A `sourceId` that names no
  * source falls through to the app's not-found page.
  */
@@ -141,7 +141,7 @@ export function createReviewRouter(deps: AppDeps): Router {
     renderReview(res, deps.db, source);
   });
 
-  // Only a photo that has no task yet is analyzed. Express hands a rejection to its
+  // Only a source that has no task yet is analyzed. Express hands a rejection to its
   // error handler.
   router.post('/review/:sourceId/analyze', async (req, res, next) => {
     const source = findSource(deps.db, req.params.sourceId);
@@ -149,11 +149,11 @@ export function createReviewRouter(deps: AppDeps): Router {
       next();
       return;
     }
-    if (source.kind !== 'photo' || listSourceTasks(deps.db, source.id).length > 0) {
+    if (listSourceTasks(deps.db, source.id).length > 0) {
       res.redirect(303, reviewPath(source.id));
       return;
     }
-    answerAnalysis(res, source, await analyzePhotoSource(deps, source));
+    answerAnalysis(res, source, await analyzeSource(deps, source));
   });
 
   router.post('/review/:sourceId/confirm', form, (req, res, next) => {
