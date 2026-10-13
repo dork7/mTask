@@ -1,0 +1,92 @@
+<%#
+  The task list: every task but the drafts, filtered and sorted by the query string.
+  tasks: { bar, active, sort, cards, empty, clearHref }
+  `bar` holds a chip link per priority and per slot, each to the list with its own value
+  turned on or off. `active` are the chips of the values that are on, each to the list
+  without it. `sort` is the GET form of the sort: its options, the current one and the
+  hidden inputs that keep the filters. `cards` are the tasks shown, each with where its
+  actions post. `empty` is 'none' when there is no task at all, 'filtered' when the
+  filters match none of them, else null.
+  Every address here is built by the route, with the query in the app's one order.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Tasks' } }) -%>
+
+<div class="filter-bar">
+  <div class="filter-bar__group" role="group" aria-label="Priority">
+<% for (const chip of tasks.bar.priorities) { -%>
+    <%- include('../partials/chip', { chip }) -%>
+<% } -%>
+  </div>
+  <div class="filter-bar__group" role="group" aria-label="Time slot">
+<% for (const chip of tasks.bar.slots) { -%>
+    <%- include('../partials/chip', { chip }) -%>
+<% } -%>
+  </div>
+</div>
+
+<% if (tasks.active.length > 0) { -%>
+<ul class="active-filters" aria-label="Active filters">
+<% for (const chip of tasks.active) { -%>
+  <li><%- include('../partials/chip', { chip }) -%></li>
+<% } -%>
+</ul>
+<% } -%>
+
+<form class="sort-form" method="get" action="<%= tasks.sort.action %>">
+<% for (const input of tasks.sort.hidden) { -%>
+  <input type="hidden" name="<%= input.name %>" value="<%= input.value %>">
+<% } -%>
+  <label class="sort-form__label" for="sort-by">Sort by</label>
+  <select class="field" id="sort-by" name="sort">
+<% for (const option of tasks.sort.options) { -%>
+    <option value="<%= option.id %>"<% if (option.id === tasks.sort.current) { %> selected<% } %>><%= option.label %></option>
+<% } -%>
+  </select>
+  <%- include('../partials/button', { button: { label: 'Sort', variant: 'ghost', type: 'submit' } }) -%>
+</form>
+
+<% if (tasks.empty === 'none') { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'No tasks yet',
+  text: 'Tasks you confirm on the review page are listed here.',
+  actions: include('../partials/button', { button: { label: 'Add a task', href: '/add' } }),
+} }) -%>
+<% } else if (tasks.empty === 'filtered') { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'No tasks match these filters',
+  actions: include('../partials/button', { button: { label: 'Clear filters', variant: 'ghost', href: tasks.clearHref } }),
+} }) -%>
+<% } else { -%>
+<ol class="task-list">
+<% for (const card of tasks.cards) { -%>
+  <li class="card task" id="task-<%= card.id %>">
+    <h2 class="task__title"><%= card.title %></h2>
+    <p class="task__meta">
+      <span class="task__minutes"><%= card.minutes %></span>
+<% if (card.priority !== null) { -%>
+      <%- include('../partials/priority-badge', { priorityBadge: { priority: card.priority } }) -%>
+<% } -%>
+      <span class="task__slot"><%= card.slot %></span>
+      <span class="task__status"><%= card.status %></span>
+      <span class="task__start"><%= card.start %></span>
+    </p>
+    <div class="task__actions">
+<% if (card.doneAction !== null) { -%>
+      <form method="post" action="<%= card.doneAction %>">
+        <%- include('../partials/button', { button: { label: 'Done', type: 'submit' } }) -%>
+      </form>
+<% } -%>
+<% if (card.rescheduleAction !== null) { -%>
+      <form method="post" action="<%= card.rescheduleAction %>">
+        <%- include('../partials/button', { button: { label: 'Reschedule', variant: 'ghost', type: 'submit' } }) -%>
+      </form>
+<% } -%>
+      <%- include('../partials/button', { button: { label: 'Edit', variant: 'ghost', href: card.editHref } }) -%>
+      <form method="post" action="<%= card.deleteAction %>">
+        <%- include('../partials/button', { button: { label: 'Delete', variant: 'ghost', type: 'submit' } }) -%>
+      </form>
+    </div>
+  </li>
+<% } -%>
+</ol>
+<% } -%>

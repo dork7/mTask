@@ -34,7 +34,7 @@ const NOT_SCHEDULED = 'Not scheduled';
 const ID_SHAPE = /^[1-9]\d{0,14}$/;
 
 /** The id a path segment holds, or `undefined` when it is not written as an id. */
-function readId(raw: unknown): number | undefined {
+export function readId(raw: unknown): number | undefined {
   return typeof raw === 'string' && ID_SHAPE.test(raw) ? Number(raw) : undefined;
 }
 

@@ -1,0 +1,52 @@
+<%#
+  The edit page of one task: what the user sets in place of what the analyzer and the
+  rules chose.
+  edit: { title, minutes, priority, slot, action, deleteAction, backHref }
+  errors: the messages of a refused post.
+  The values are the stored ones, or those of a refused post. `slot` is '' for No slot.
+  Delete is a form of its own after the edit form: forms do not nest.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Edit task' } }) -%>
+
+<% if (errors.length > 0) { -%>
+<div class="notice notice--error" role="alert">
+<% for (const message of errors) { -%>
+  <p><%= message %></p>
+<% } -%>
+</div>
+<% } -%>
+<form class="edit-form" method="post" action="<%= edit.action %>">
+  <label class="edit-form__label" for="edit-title">Title</label>
+  <input class="field" id="edit-title" type="text" name="title" value="<%= edit.title %>" required>
+  <label class="edit-form__label" for="edit-minutes">Minutes</label>
+  <input class="field" id="edit-minutes" type="number" name="minutes" value="<%= edit.minutes %>" min="1" max="1440" required>
+  <fieldset class="choices">
+    <legend class="edit-form__label">Priority</legend>
+<% for (const item of ui.priorities) { -%>
+    <label class="choice">
+      <input type="radio" name="priority" value="<%= item.id %>"<% if (edit.priority === item.id) { %> checked<% } %>>
+      <span><span aria-hidden="true"><%= item.glyph %></span> <%= item.label %></span>
+    </label>
+<% } -%>
+  </fieldset>
+  <fieldset class="choices">
+    <legend class="edit-form__label">Time slot</legend>
+    <label class="choice">
+      <input type="radio" name="slot" value=""<% if (edit.slot === '') { %> checked<% } %>>
+      <span>No slot</span>
+    </label>
+<% for (const item of ui.slots) { -%>
+    <label class="choice">
+      <input type="radio" name="slot" value="<%= item.id %>"<% if (edit.slot === item.id) { %> checked<% } %>>
+      <span><%= item.label %></span>
+    </label>
+<% } -%>
+  </fieldset>
+  <div class="edit-form__actions">
+    <%- include('../partials/button', { button: { label: 'Save', type: 'submit' } }) -%>
+    <%- include('../partials/button', { button: { label: 'Back to tasks', variant: 'ghost', href: edit.backHref } }) -%>
+  </div>
+</form>
+<form method="post" action="<%= edit.deleteAction %>">
+  <%- include('../partials/button', { button: { label: 'Delete', variant: 'ghost', type: 'submit' } }) -%>
+</form>

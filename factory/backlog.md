@@ -17,7 +17,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 007-voice-and-text: Voice and Type tabs on the Add screen
 - [x] 008-slot-rules: priority and time-slot rules
 - [x] 009-scheduler: auto-scheduler with gap filling, bumping and overflow
-- [ ] 010-task-list: task list with filters, sort, edit and delete
+- [x] 010-task-list: task list with filters, sort, edit and delete
 - [ ] 011-overdue: overdue view with reschedule and mark done
 - [ ] 012-timeline: day timeline with slot bands, now line and conflicts
 - [ ] 013-timer-and-detail: task detail sheet, Start and Done, running timer

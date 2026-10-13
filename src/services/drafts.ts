@@ -237,7 +237,7 @@ export function discardDrafts(db: Database, sourceId: number): void {
 }
 
 /** The minutes a form field holds: one to four digits, from 1 to 1440. `undefined` for anything else. */
-function readMinutes(value: string): number | undefined {
+export function readMinutes(value: string): number | undefined {
   const text = value.trim();
   if (!/^\d{1,4}$/.test(text)) return undefined;
 
