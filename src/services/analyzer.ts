@@ -271,3 +271,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isOneOf<T extends string>(list: readonly T[], value: unknown): value is T {
   return list.some((item) => item === value);
 }
+
+/** The analyzer as the app calls it: the client and the model are already decided. */
+export type Analyze = (input: AnalyzerInput) => Promise<Analysis>;
+
+/** An analysis was asked for, but the app was started without an API key. */
+export class AnalyzerKeyError extends Error {
+  constructor() {
+    super('The analyzer has no API key.');
+    this.name = 'AnalyzerKeyError';
+  }
+}
+
+/**
+ * The analyzer the app is handed. With a key it asks `model` through one client, made
+ * here; making it sends nothing. Without a key it makes no client and every call rejects
+ * with an `AnalyzerKeyError`, so nothing can be sent.
+ */
+export function createAnalyze(apiKey: string | undefined, model: string): Analyze {
+  if (apiKey === undefined) return () => Promise.reject(new AnalyzerKeyError());
+
+  const client = createAnalyzerClient(apiKey);
+  return (input) => analyze(input, { client, model });
+}

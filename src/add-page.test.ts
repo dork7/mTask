@@ -1,9 +1,11 @@
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Analyze } from './services/analyzer.ts';
 import { createTestApp, type TestApp } from './testing/app.ts';
 import {
   all,
   chooseFile,
+  isShown,
   one,
   openPage,
   parseHtml,
@@ -31,6 +33,8 @@ const NEW_CLASSES = [
   'photo-form__label',
   'photo-form__input',
   'photo-form__actions',
+  'analyzing',
+  'analyzing__text',
 ];
 
 /** The Add page opened as a browser would, with the handles the preview tests use. */
@@ -40,17 +44,20 @@ interface OpenAdd {
   input: DomFileInput;
   preview: DomElement;
   retake: DomElement;
-  /** Runs the page's linked script, as the browser does once the page is parsed. */
+  /** Runs the page's linked scripts, as the browser does once the page is parsed. */
   start(): Promise<string[]>;
   /** A file to choose, made in the page. */
   file(name: string): DomFile;
 }
 
 let testApp: TestApp;
+/** The analyzer of the app: a stub that finds no task, so a stored photo is answered with the Add page. */
+let analyze: ReturnType<typeof vi.fn<Analyze>>;
 const opened: DomWindow[] = [];
 
 beforeEach(() => {
-  testApp = createTestApp();
+  analyze = vi.fn<Analyze>(() => Promise.resolve({ tasks: [], fallback: false }));
+  testApp = createTestApp({ analyze });
 });
 
 // A script that throws, on load or in a listener, fails the test that opened the page.
@@ -69,12 +76,24 @@ async function getAdd(): Promise<DomDocument> {
   return parseHtml(response.text);
 }
 
-/** The Add page as it answers a stored photo. */
-async function getAddAfterPhoto(): Promise<DomDocument> {
-  const response = await request(testApp.app)
+function upload(): request.Test {
+  return request(testApp.app)
     .post('/add/photo')
     .attach('photo', Buffer.from('abc'), { filename: 'list.png', contentType: 'image/png' });
-  expect(response.status).toBe(201);
+}
+
+/** The Add page as it answers a photo in which no task was found. */
+async function getAddAfterNoTasks(): Promise<DomDocument> {
+  const response = await upload();
+  expect(response.status).toBe(200);
+  return parseHtml(response.text);
+}
+
+/** The Add page as it answers a photo that could not be analyzed. */
+async function getAddAfterFailure(): Promise<DomDocument> {
+  analyze.mockResolvedValueOnce({ tasks: [], fallback: true });
+  const response = await upload();
+  expect(response.status).toBe(502);
   return parseHtml(response.text);
 }
 
@@ -85,9 +104,9 @@ async function getAddAfterRejection(): Promise<DomDocument> {
   return parseHtml(response.text);
 }
 
-/** The three states the page is served in. */
-function addPages(): Promise<DomDocument[]> {
-  return Promise.all([getAdd(), getAddAfterPhoto(), getAddAfterRejection()]);
+/** The four states the page is served in. One after the other: the failure is the stub's next answer. */
+async function addPages(): Promise<DomDocument[]> {
+  return [await getAdd(), await getAddAfterNoTasks(), await getAddAfterFailure(), await getAddAfterRejection()];
 }
 
 async function openAdd(): Promise<OpenAdd> {
@@ -166,7 +185,8 @@ describe('GET /add (AC1)', () => {
     const document = await getAdd();
 
     expect(all(document, '[role="alert"]')).toEqual([]);
-    expect(all(document, '[role="status"]')).toEqual([]);
+    // The "Analyzing..." status is in the page, hidden until a form is submitted.
+    expect(all(document, '[role="status"]').filter(isShown)).toEqual([]);
     expect(all(document, 'main img[src]')).toEqual([]);
   });
 });
@@ -254,23 +274,26 @@ describe('the photo preview (AC3)', () => {
     expect(isHidden(retake)).toBe(true);
   });
 
-  it('links to one script, deferred, which the app serves as JavaScript', async () => {
+  it('links to two scripts, each deferred, which the app serves as JavaScript', async () => {
     const document = await getAdd();
-    const script = one(document, 'script[src]');
+    const scripts = all(document, 'script[src]');
 
-    expect(script.getAttribute('src')).toBe('/js/add-photo.js');
-    expect(script.hasAttribute('defer')).toBe(true);
+    expect(scripts.map((script) => script.getAttribute('src'))).toEqual(['/js/add-photo.js', '/js/add-analyzing.js']);
 
-    const response = await request(testApp.app).get('/js/add-photo.js');
+    for (const script of scripts) {
+      expect(script.hasAttribute('defer')).toBe(true);
 
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toMatch(/javascript/);
+      const response = await request(testApp.app).get(script.getAttribute('src') ?? '');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/javascript/);
+    }
   });
 
   it('stays hidden when the script loads with no file chosen', async () => {
     const { start, preview, retake, urls } = await openAdd();
 
-    await expect(start()).resolves.toEqual(['/js/add-photo.js']);
+    await expect(start()).resolves.toEqual(['/js/add-photo.js', '/js/add-analyzing.js']);
 
     expect(isHidden(preview)).toBe(true);
     expect(isHidden(retake)).toBe(true);

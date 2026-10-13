@@ -7,9 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * `server.ts` listens as soon as it is imported. These tests import it with
  * `createApp` replaced by a spy that returns an app whose `listen` is a spy, so no
  * port is opened, with `openDatabase` replaced by a spy that returns a stand-in, so
- * no database is opened, and with `loadEnv` replaced by a spy, so a developer's own
- * `.env` cannot change the result. `getPort`, `getDatabasePath` and `getUploadsDir`
- * stay the real ones.
+ * no database is opened, with `createAnalyze` replaced by a spy that returns a
+ * stand-in, so the SDK is not loaded and no client is made, and with `loadEnv`
+ * replaced by a spy, so a developer's own `.env` cannot change the result. `getPort`,
+ * `getDatabasePath`, `getUploadsDir`, `getAnthropicApiKey` and `getAnthropicModel` stay
+ * the real ones.
  */
 
 const listen = vi.fn();
@@ -18,7 +20,11 @@ const loadEnv = vi.fn();
 /** Stands in for the open database. `server.ts` only hands it on. */
 const database = { name: 'the database openDatabase returned' };
 const openDatabase = vi.fn((_file: string) => database);
-const createApp = vi.fn((_deps: { db: unknown; uploadsDir: string }) => ({ listen }));
+const createApp = vi.fn((_deps: { db: unknown; uploadsDir: string; analyze: unknown }) => ({ listen }));
+
+/** Stands in for the analyzer. `server.ts` only hands it on. */
+const analyze = vi.fn();
+const createAnalyze = vi.fn((_apiKey: string | undefined, _model: string) => analyze);
 
 async function startServer(): Promise<void> {
   await import('./server.ts');
@@ -28,6 +34,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.doMock('./app.ts', () => ({ createApp }));
   vi.doMock('./db/database.ts', () => ({ openDatabase }));
+  vi.doMock('./services/analyzer.ts', () => ({ createAnalyze }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
     return { ...actual, loadEnv };
@@ -37,6 +44,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.doUnmock('./app.ts');
   vi.doUnmock('./db/database.ts');
+  vi.doUnmock('./services/analyzer.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -155,7 +163,7 @@ describe('server: the database and the uploads folder (AC11)', () => {
     await startServer();
 
     expect(createApp).toHaveBeenCalledTimes(1);
-    expect(createApp.mock.calls[0]).toStrictEqual([{ db: database, uploadsDir }]);
+    expect(createApp.mock.calls[0]).toStrictEqual([{ db: database, uploadsDir, analyze }]);
     // The very object openDatabase returned, not a copy of it.
     expect(createApp.mock.calls[0][0].db).toBe(openDatabase.mock.results[0].value);
     expect(existsSync(uploadsDir)).toBe(false);
@@ -171,6 +179,31 @@ describe('server: the database and the uploads folder (AC11)', () => {
 
     expect(createApp).not.toHaveBeenCalled();
     expect(listen).not.toHaveBeenCalled();
+  });
+});
+
+describe('server: the analyzer (006 AC1)', () => {
+  it('builds the analyzer from the configured key and model and hands it to the app', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    vi.stubEnv('ANTHROPIC_MODEL', 'claude-test-model');
+
+    await startServer();
+
+    expect(createAnalyze.mock.calls).toEqual([['test-key', 'claude-test-model']]);
+    expect(createApp).toHaveBeenCalledTimes(1);
+    // The very function createAnalyze returned, not another one.
+    expect(createApp.mock.calls[0][0].analyze).toBe(createAnalyze.mock.results[0].value);
+  });
+
+  it('builds it without a key, on the default model, and still listens', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', undefined);
+    vi.stubEnv('ANTHROPIC_MODEL', undefined);
+
+    await startServer();
+
+    expect(createAnalyze.mock.calls).toEqual([[undefined, 'claude-opus-5-5']]);
+    expect(createApp.mock.calls[0][0].analyze).toBe(createAnalyze.mock.results[0].value);
+    expect(listen).toHaveBeenCalledTimes(1);
   });
 });
 

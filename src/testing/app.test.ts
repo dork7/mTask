@@ -1,15 +1,17 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import request from 'supertest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSource } from '../db/sources.ts';
-import { createTestApp, withTestApp, type TestApp } from './app.ts';
+import type { Analyze } from '../services/analyzer.ts';
+import { createTestApp, withTestApp, type TestApp, type TestAppOptions } from './app.ts';
 
 const created: TestApp[] = [];
 
 /** A test app that the `afterEach` closes, whatever the test did with it. */
-function newTestApp(): TestApp {
-  const testApp = createTestApp();
+function newTestApp(options?: TestAppOptions): TestApp {
+  const testApp = createTestApp(options);
   created.push(testApp);
   return testApp;
 }
@@ -57,6 +59,37 @@ describe('createTestApp (AC12)', () => {
     expect(second.dir).not.toBe(first.dir);
     expect(countSources(first)).toBe(1);
     expect(countSources(second)).toBe(0);
+  });
+});
+
+describe('the analyzer of a test app (006 AC1, AC19)', () => {
+  it('is a stub that finds one task, a new object on every call', async () => {
+    const { analyze } = newTestApp();
+
+    const first = await analyze({ kind: 'text', text: 'anything' });
+    const second = await analyze({ kind: 'text', text: 'anything' });
+
+    expect(first.fallback).toBe(false);
+    expect(first.tasks).toHaveLength(1);
+    expect(first.tasks[0].title).toBe('Buy milk');
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+    expect(second.tasks).not.toBe(first.tasks);
+    expect(second.tasks[0]).not.toBe(first.tasks[0]);
+  });
+
+  it('is the one handed in, and the app calls it for an upload', async () => {
+    const analyze = vi.fn<Analyze>(() => Promise.resolve({ tasks: [], fallback: false }));
+    const testApp = newTestApp({ analyze });
+
+    expect(testApp.analyze).toBe(analyze);
+    expect(analyze).not.toHaveBeenCalled();
+
+    await request(testApp.app)
+      .post('/add/photo')
+      .attach('photo', Buffer.from('abc'), { filename: 'list.png', contentType: 'image/png' });
+
+    expect(analyze).toHaveBeenCalledTimes(1);
   });
 });
 

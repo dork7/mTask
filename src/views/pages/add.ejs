@@ -1,9 +1,12 @@
 <%#
   The Add screen, with its one tab, Photo.
-  addPage: { error, savedPhoto }
-  `error` is why the last post was refused, or null. `savedPhoto` is the image path of
-  the photo the last post stored, or null. Both are always present.
-  The preview and Retake are shown by /js/add-photo.js; without it the form still posts.
+  addPage: { error, notice, retryAction }
+  `error` is why the last post was refused or failed, or null. `notice` is what the last
+  post found when that is not an error, or null. `retryAction` is where the Try again
+  form posts to analyze a stored photo again, or null. All three are always present.
+  The preview and Retake are shown by /js/add-photo.js. The "Analyzing..." state is
+  shown by /js/add-analyzing.js when a form marked `data-analyze-form` is submitted: the
+  answer comes only when the analysis is done. Without the scripts the forms still post.
 -%>
 <%- include('../partials/page-header', { pageHeader: { heading: 'Add task' } }) -%>
 
@@ -19,11 +22,15 @@
 <% if (addPage.error) { -%>
   <p class="notice notice--error" role="alert"><%= addPage.error %></p>
 <% } -%>
-<% if (addPage.savedPhoto) { -%>
-  <p class="notice" role="status">Photo saved.</p>
-  <img class="photo" src="<%= addPage.savedPhoto %>" alt="The photo you saved">
+<% if (addPage.notice) { -%>
+  <p class="notice" role="status"><%= addPage.notice %></p>
 <% } -%>
-  <form class="photo-form" method="post" action="/add/photo" enctype="multipart/form-data">
+<% if (addPage.retryAction) { -%>
+  <form method="post" action="<%= addPage.retryAction %>" data-analyze-form>
+    <%- include('../partials/button', { button: { label: 'Try again', type: 'submit' } }) -%>
+  </form>
+<% } -%>
+  <form class="photo-form" method="post" action="/add/photo" enctype="multipart/form-data" data-analyze-form>
     <label class="photo-form__label" for="photo-input">Take or choose a photo</label>
     <input class="photo-form__input" id="photo-input" type="file" name="photo" accept="image/*" capture="environment" required data-photo-input>
     <img class="photo" alt="Preview of the photo you chose" data-photo-preview hidden>
@@ -32,5 +39,10 @@
       <%- include('../partials/button', { button: { label: 'Upload photo', type: 'submit' } }) -%>
     </div>
   </form>
+  <div class="analyzing" role="status" data-analyzing hidden>
+    <p class="analyzing__text">Analyzing...</p>
+    <%- include('../partials/skeleton', { skeleton: {} }) -%>
+  </div>
 </div>
 <script src="/js/add-photo.js" defer></script>
+<script src="/js/add-analyzing.js" defer></script>

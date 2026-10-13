@@ -4,10 +4,11 @@ import {
   type DomElement,
   type DomFile,
   type DomFileInput,
+  type DomInput,
   type DomWindow,
 } from 'jsdom';
 
-export type { DomDocument, DomElement, DomFile, DomFileInput, DomWindow };
+export type { DomDocument, DomElement, DomFile, DomFileInput, DomInput, DomWindow };
 
 /** The address the pages are opened at. localStorage needs a real origin. */
 const PAGE_URL = 'http://localhost/';
@@ -152,6 +153,30 @@ export function one(root: DomDocument | DomElement, selector: string): DomElemen
     throw new Error(`Expected one element for "${selector}", found ${found.length}`);
   }
   return found[0];
+}
+
+/** Whether an element is shown: neither it nor anything around it has the `hidden` attribute. */
+export function isShown(element: DomElement): boolean {
+  return element.closest('[hidden]') === null;
+}
+
+/**
+ * What a browser would post for a form as it was served, read from the attributes of a
+ * page parsed with its scripts off: every named input with its `value` attribute, except
+ * a radio that is not checked, and every named select with the value of its selected
+ * option, or of its first. Buttons are left out.
+ */
+export function formFields(form: DomElement): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const input of all(form, 'input[name]')) {
+    if (input.getAttribute('type') === 'radio' && !input.hasAttribute('checked')) continue;
+    fields[input.getAttribute('name') ?? ''] = input.getAttribute('value') ?? '';
+  }
+  for (const select of all(form, 'select[name]')) {
+    const option = select.querySelector('option[selected]') ?? select.querySelector('option');
+    fields[select.getAttribute('name') ?? ''] = option?.getAttribute('value') ?? '';
+  }
+  return fields;
 }
 
 /** The text of an element with its `aria-hidden="true"` parts removed, trimmed. */

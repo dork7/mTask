@@ -5,7 +5,9 @@ import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
 import { homeRouter } from './routes/home.ts';
+import { createReviewRouter } from './routes/review.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
+import type { Analyze } from './services/analyzer.ts';
 import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
 import { ui } from './ui.ts';
 
@@ -15,12 +17,15 @@ export interface AppDeps {
   db: Database;
   /** The folder uploaded photos are stored in, as an absolute path. It may not exist yet. */
   uploadsDir: string;
+  /** Turns a stored photo into tasks. The real one asks the Anthropic API; a test hands in a stub. */
+  analyze: Analyze;
 }
 
 /**
- * Builds the Express app on an open database and an uploads folder. It never listens
- * and never reads the environment: `server.ts` does both, and tests drive the app
- * returned here directly. The caller opens the database and closes it.
+ * Builds the Express app on an open database, an uploads folder and an analyzer. It
+ * never listens, never reads the environment and never makes an API client: `server.ts`
+ * does all three, and tests drive the app returned here directly. The caller opens the
+ * database and closes it.
  *
  * Throws when `uploadsDir` is not absolute, because a relative path would land in
  * whatever folder the process was started from. The folder is not created here; it is
@@ -53,6 +58,7 @@ export function createApp(deps: AppDeps): Express {
   );
   app.use(homeRouter);
   app.use(createAddRouter(deps));
+  app.use(createReviewRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {
