@@ -2,9 +2,10 @@
   The Review screen: what the analyzer read from one source, before any of it is saved.
   review: { source, cards, savedCount, errors, confirmAction, discardAction }
   `source` is the row of the photo or the transcript. `cards` are its drafts, each with
-  the values of its controls and the names they post under (`fields`). `savedCount` is
-  how many tasks the source has when it has no draft, else 0. `errors` are the messages
-  of a refused confirm. `confirmAction` and `discardAction` are where the form posts.
+  the values of its controls, the names they post under (`fields`) and where it would
+  land if it were confirmed now (`land`). `savedCount` is how many tasks the source has
+  when it has no draft, else 0. `errors` are the messages of a refused confirm.
+  `confirmAction` and `discardAction` are where the form posts.
   With cards the page is the form; without, it says how many tasks are saved, or that
   there is nothing to review.
   The − and + buttons are shown and worked by /js/review.js; without it the minutes can
@@ -52,6 +53,7 @@
         <%- include('../partials/button', { button: { label: '+', variant: 'ghost', attrs: { 'data-minutes-step': '5', 'aria-label': '5 minutes more', hidden: '' } } }) -%>
         <span class="stepper__unit" aria-hidden="true">min</span>
       </div>
+      <p class="land"><span aria-hidden="true">→</span> <%= card.land %></p>
       <fieldset class="choices">
         <legend class="visually-hidden">Priority</legend>
 <% for (const item of ui.priorities) { -%>

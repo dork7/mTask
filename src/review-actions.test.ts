@@ -53,6 +53,21 @@ const bank: AnalyzedTask = {
 
 type Fields = Record<string, string>;
 
+/** The two columns of a task the scheduler placed on 4 March 2026, from `HH:MM` on the UTC clock. */
+function scheduled(start: string, end: string): Pick<Task, 'scheduled_start' | 'scheduled_end'> {
+  return { scheduled_start: `2026-03-04T${start}:00.000Z`, scheduled_end: `2026-03-04T${end}:00.000Z` };
+}
+
+/**
+ * Where a confirm at `LATER` puts `bug`, `milk` and `bank` as they are seeded. `LATER` is
+ * 10:06 AM in Dubai, so the first mark is 10:10 AM, which is 06:10 UTC; the tasks go by
+ * priority, which is also their order, and each starts where the one before it ends.
+ */
+const SEEDED_TIMES = [scheduled('06:10', '07:40'), scheduled('07:40', '08:20'), scheduled('08:20', '08:35')];
+
+/** The same with the first task at 95 minutes. */
+const EDITED_TIMES = [scheduled('06:10', '07:45'), scheduled('07:45', '08:25'), scheduled('08:25', '08:40')];
+
 let testApp: TestApp;
 let analyze: ReturnType<typeof vi.fn<Analyze>>;
 
@@ -158,7 +173,9 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
     expect(response.status).toBe(303);
     expect(response.headers.location).toBe(`/review/${source.id}`);
 
-    expect(tasks()).toEqual(before.map((row) => ({ ...row, status: 'pending', updated_at: LATER })));
+    expect(tasks()).toEqual(
+      before.map((row, index) => ({ ...row, status: 'pending', ...SEEDED_TIMES[index], updated_at: LATER })),
+    );
     for (const [index, analyzed] of [bug, milk, bank].entries()) {
       expect(tasks()[index]).toMatchObject({
         status: 'pending',
@@ -170,7 +187,7 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
         category: analyzed.category,
         confidence: analyzed.confidence,
         source_id: source.id,
-        scheduled_start: null,
+        ...SEEDED_TIMES[index],
       });
     }
   });
@@ -197,10 +214,11 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
         priority: 'urgent',
         time_slot: 'morning',
         status: 'pending',
+        ...EDITED_TIMES[0],
         updated_at: LATER,
       },
-      { ...before[1], status: 'pending', updated_at: LATER },
-      { ...before[2], status: 'pending', updated_at: LATER },
+      { ...before[1], status: 'pending', ...EDITED_TIMES[1], updated_at: LATER },
+      { ...before[2], status: 'pending', ...EDITED_TIMES[2], updated_at: LATER },
     ]);
   });
 
@@ -234,9 +252,16 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
 
     expect(response.status).toBe(303);
     expect(tasks()).toEqual([
-      { ...before[0], title: 'Edited', estimated_minutes: 95, status: 'pending', updated_at: LATER },
-      { ...before[1], status: 'pending', updated_at: LATER },
-      { ...before[2], status: 'pending', updated_at: LATER },
+      {
+        ...before[0],
+        title: 'Edited',
+        estimated_minutes: 95,
+        status: 'pending',
+        ...EDITED_TIMES[0],
+        updated_at: LATER,
+      },
+      { ...before[1], status: 'pending', ...EDITED_TIMES[1], updated_at: LATER },
+      { ...before[2], status: 'pending', ...EDITED_TIMES[2], updated_at: LATER },
     ]);
   });
 
@@ -248,7 +273,9 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
     const response = await post(`/review/${source.id}/confirm`, { [`title-${draft.id}`]: 'Only the title' });
 
     expect(response.status).toBe(303);
-    expect(tasks()).toEqual([{ ...before[0], title: 'Only the title', status: 'pending', updated_at: LATER }]);
+    expect(tasks()).toEqual([
+      { ...before[0], title: 'Only the title', status: 'pending', ...scheduled('16:00', '17:30'), updated_at: LATER },
+    ]);
     expect(task(draft.id)).toMatchObject({ estimated_minutes: 90, priority: 'high', time_slot: 'night' });
   });
 
@@ -260,7 +287,9 @@ describe('POST /review/:sourceId/confirm (AC12)', () => {
 
     expect(response.status).toBe(303);
     expect(response.headers.location).toBe(`/review/${source.id}`);
-    expect(tasks()).toEqual(before.map((row) => ({ ...row, status: 'pending', updated_at: LATER })));
+    expect(tasks()).toEqual(
+      before.map((row, index) => ({ ...row, status: 'pending', ...SEEDED_TIMES[index], updated_at: LATER })),
+    );
   });
 
   it('changes nothing through a field named after a task that is not a draft of this source', async () => {

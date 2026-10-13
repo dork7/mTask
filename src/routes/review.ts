@@ -3,6 +3,7 @@ import type { AppDeps } from '../app.ts';
 import type { Database } from '../db/database.ts';
 import { getSource, listSourceTasks, type Source } from '../db/sources.ts';
 import type { Task } from '../db/tasks.ts';
+import { dayTimeLabel } from '../dubai.ts';
 import { renderPage } from '../render.ts';
 import {
   LOW_CONFIDENCE,
@@ -18,12 +19,16 @@ import {
   type DraftFieldName,
   type DraftProblems,
 } from '../services/drafts.ts';
+import { placeTasks } from '../services/scheduler.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import { answerAnalysis, reviewPath } from './add.ts';
 
 const NO_TITLE = 'Give every task a title.';
 const BAD_MINUTES = 'Set every duration to a whole number of minutes from 1 to 1440.';
 const BAD_CHOICE = 'Choose every priority and every slot from the ones offered.';
+
+/** What a card shows for a draft the scheduler cannot place. */
+const NOT_SCHEDULED = 'Not scheduled';
 
 /** An id as the app writes it into an address: digits, no sign, no leading zero, a safe integer. */
 const ID_SHAPE = /^[1-9]\d{0,14}$/;
@@ -50,6 +55,8 @@ interface DraftCard {
   /** The empty string is `No slot`. */
   slot: Slot | '';
   lowConfidence: boolean;
+  /** Where the stored draft would land if it were confirmed now: `Today 8:00 PM`, or `Not scheduled`. */
+  land: string;
   fields: Record<DraftFieldName, string>;
   removeAction: string;
 }
@@ -57,9 +64,10 @@ interface DraftCard {
 /**
  * The card of a draft. A value that was posted is shown in place of the stored one: a
  * title or minutes exactly as posted, a priority or a slot only when the page has a
- * control for it. `body` is the posted form, or `undefined` on a plain request.
+ * control for it. `body` is the posted form, or `undefined` on a plain request. `land` is
+ * the text of its landing preview.
  */
-function cardOf(sourceId: number, draft: Task, body: unknown): DraftCard {
+function cardOf(sourceId: number, draft: Task, body: unknown, land: string): DraftCard {
   const fields = {
     title: draftField('title', draft.id),
     minutes: draftField('minutes', draft.id),
@@ -78,6 +86,7 @@ function cardOf(sourceId: number, draft: Task, body: unknown): DraftCard {
     priority: priorities.find((item) => item.id === postedPriority)?.id ?? draft.priority,
     slot: postedSlot === '' ? '' : (slots.find((item) => item.id === postedSlot)?.id ?? storedSlot),
     lowConfidence: draft.confidence !== null && draft.confidence < LOW_CONFIDENCE,
+    land,
     fields,
     removeAction: `${reviewPath(sourceId)}/remove/${draft.id}`,
   };
@@ -94,18 +103,27 @@ function messagesOf(problems: DraftProblems): string[] {
 
 /**
  * Renders the review page of a source with this status: its drafts as cards, or how many
- * of its tasks are saved, or that there is nothing to review. `body` is a posted form
- * whose values the cards show; `errors` are the messages of a refused confirm.
+ * of its tasks are saved, or that there is nothing to review. `now` is the time of the
+ * request: each card says where its stored draft would land if the drafts were confirmed
+ * at it. `body` is a posted form whose values the cards show; `errors` are the messages of
+ * a refused confirm.
  */
 function renderReview(
   res: Response,
   db: Database,
   source: Source,
+  now: Date,
   status = 200,
   body: unknown = undefined,
   errors: string[] = [],
 ): void {
-  const cards = listDrafts(db, source.id).map((draft) => cardOf(source.id, draft, body));
+  const drafts = listDrafts(db, source.id);
+  // The preview is of the drafts as they are stored, all placed in one call. Nothing is written.
+  const starts = new Map(placeTasks(db, drafts, now).placed.map((placed) => [placed.id, placed.scheduled_start]));
+  const cards = drafts.map((draft) => {
+    const start = starts.get(draft.id);
+    return cardOf(source.id, draft, body, start === undefined ? NOT_SCHEDULED : dayTimeLabel(new Date(start), now));
+  });
 
   res.status(status);
   renderPage(res, 'review', {
@@ -138,7 +156,7 @@ export function createReviewRouter(deps: AppDeps): Router {
       next();
       return;
     }
-    renderReview(res, deps.db, source);
+    renderReview(res, deps.db, source, new Date());
   });
 
   // Only a source that has no task yet is analyzed. Express hands a rejection to its
@@ -162,14 +180,16 @@ export function createReviewRouter(deps: AppDeps): Router {
       next();
       return;
     }
+    // Read once: the preview of a refused confirm and the times of an accepted one are of this instant.
+    const now = new Date();
 
     const drafts = listDrafts(deps.db, source.id);
     const edits = readDraftEdits(req.body, drafts);
     if (hasProblems(edits.problems)) {
-      renderReview(res, deps.db, source, 400, req.body, messagesOf(edits.problems));
+      renderReview(res, deps.db, source, now, 400, req.body, messagesOf(edits.problems));
       return;
     }
-    confirmDrafts(deps.db, drafts, edits);
+    confirmDrafts(deps.db, drafts, edits, now);
     res.redirect(303, reviewPath(source.id));
   });
 
