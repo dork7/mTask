@@ -1,35 +1,46 @@
 <%#
-  The Add screen, with its one tab, Photo.
-  addPage: { error, notice, retryAction }
-  `error` is why the last post was refused or failed, or null. `notice` is what the last
-  post found when that is not an error, or null. `retryAction` is where the Try again
-  form posts to analyze a stored photo again, or null. All three are always present.
+  The Add screen, with its three tabs: Photo, Voice and Type.
+  addPage: { tab, tabs, error, notice, retryAction, text, maxTextLength }
+  `tab` is the selected tab, `photo`, `voice` or `text`: its panel is shown and the other
+  two are hidden. `tabs` are the three tabs in order, each { id, label, href, selected };
+  a tab is a link, so a click loads the page. `error` is why the last post was refused or
+  failed, or null. `notice` is what the last post found when that is not an error, or
+  null. `retryAction` is where the Try again form posts to analyze a stored source again,
+  or null. `text` is what the text box of the selected tab holds; the other one is empty.
+  `maxTextLength` is the `maxlength` of both text boxes. All seven are always present.
   The preview and Retake are shown by /js/add-photo.js. The "Analyzing..." state is
   shown by /js/add-analyzing.js when a form marked `data-analyze-form` is submitted: the
-  answer comes only when the analysis is done. Without the scripts the forms still post.
+  answer comes only when the analysis is done. The record button, the message of a
+  recording that failed and, in a browser without the Web Speech API, the move from the
+  Voice tab to the Type tab are the work of /js/add-voice.js. Without the scripts every
+  form still posts.
 -%>
 <%- include('../partials/page-header', { pageHeader: { heading: 'Add task' } }) -%>
 
 <div class="tabs" role="tablist" aria-label="Ways to add a task">
+<% for (const tab of addPage.tabs) { -%>
   <%- include('../partials/button', { button: {
-    label: 'Photo',
+    label: tab.label,
     variant: 'ghost',
-    attrs: { role: 'tab', id: 'tab-photo', 'aria-selected': 'true', 'aria-controls': 'panel-photo' },
+    href: tab.href,
+    attrs: { role: 'tab', id: `tab-${tab.id}`, 'aria-selected': tab.selected ? 'true' : 'false', 'aria-controls': `panel-${tab.id}` },
   } }) -%>
+<% } -%>
 </div>
 
-<div class="tab-panel" role="tabpanel" id="panel-photo" aria-labelledby="tab-photo">
 <% if (addPage.error) { -%>
-  <p class="notice notice--error" role="alert"><%= addPage.error %></p>
+<p class="notice notice--error" role="alert"><%= addPage.error %></p>
 <% } -%>
 <% if (addPage.notice) { -%>
-  <p class="notice" role="status"><%= addPage.notice %></p>
+<p class="notice" role="status"><%= addPage.notice %></p>
 <% } -%>
 <% if (addPage.retryAction) { -%>
-  <form method="post" action="<%= addPage.retryAction %>" data-analyze-form>
-    <%- include('../partials/button', { button: { label: 'Try again', type: 'submit' } }) -%>
-  </form>
+<form method="post" action="<%= addPage.retryAction %>" data-analyze-form>
+  <%- include('../partials/button', { button: { label: 'Try again', type: 'submit' } }) -%>
+</form>
 <% } -%>
+
+<div class="tab-panel" role="tabpanel" id="panel-photo" aria-labelledby="tab-photo"<% if (addPage.tab !== 'photo') { %> hidden<% } %>>
   <form class="photo-form" method="post" action="/add/photo" enctype="multipart/form-data" data-analyze-form>
     <label class="photo-form__label" for="photo-input">Take or choose a photo</label>
     <input class="photo-form__input" id="photo-input" type="file" name="photo" accept="image/*" capture="environment" required data-photo-input>
@@ -39,10 +50,35 @@
       <%- include('../partials/button', { button: { label: 'Upload photo', type: 'submit' } }) -%>
     </div>
   </form>
-  <div class="analyzing" role="status" data-analyzing hidden>
-    <p class="analyzing__text">Analyzing...</p>
-    <%- include('../partials/skeleton', { skeleton: {} }) -%>
-  </div>
+</div>
+
+<div class="tab-panel" role="tabpanel" id="panel-voice" aria-labelledby="tab-voice"<% if (addPage.tab !== 'voice') { %> hidden<% } %>>
+  <p class="notice notice--error" role="alert" data-voice-error hidden>Voice input stopped working. Try again, or type your tasks here.</p>
+  <form class="text-form" method="post" action="/add/voice" data-analyze-form>
+    <label class="text-form__label" for="voice-text">Speak or type what you need to do</label>
+    <textarea class="field text-form__input" id="voice-text" name="text" rows="6" maxlength="<%= addPage.maxTextLength %>" required data-voice-text><%= addPage.tab === 'voice' ? addPage.text : '' %></textarea>
+    <div class="text-form__actions">
+      <%- include('../partials/button', { button: { label: 'Start recording', variant: 'ghost', attrs: { 'aria-pressed': 'false', 'data-voice-record': '', hidden: '' } } }) -%>
+      <%- include('../partials/button', { button: { label: 'Find tasks', type: 'submit' } }) -%>
+    </div>
+  </form>
+</div>
+
+<div class="tab-panel" role="tabpanel" id="panel-text" aria-labelledby="tab-text"<% if (addPage.tab !== 'text') { %> hidden<% } %>>
+  <p class="notice" role="status" data-voice-unavailable hidden>Voice input is not available in this browser. Type your tasks instead.</p>
+  <form class="text-form" method="post" action="/add/text" data-analyze-form>
+    <label class="text-form__label" for="type-text">Type what you need to do</label>
+    <textarea class="field text-form__input" id="type-text" name="text" rows="6" maxlength="<%= addPage.maxTextLength %>" required data-type-text><%= addPage.tab === 'text' ? addPage.text : '' %></textarea>
+    <div class="text-form__actions">
+      <%- include('../partials/button', { button: { label: 'Find tasks', type: 'submit' } }) -%>
+    </div>
+  </form>
+</div>
+
+<div class="analyzing" role="status" data-analyzing hidden>
+  <p class="analyzing__text">Analyzing...</p>
+  <%- include('../partials/skeleton', { skeleton: {} }) -%>
 </div>
 <script src="/js/add-photo.js" defer></script>
 <script src="/js/add-analyzing.js" defer></script>
+<script src="/js/add-voice.js" defer></script>

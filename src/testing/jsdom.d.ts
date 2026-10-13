@@ -35,6 +35,7 @@ declare module 'jsdom' {
     cloneNode(deep?: boolean): DomElement;
     remove(): void;
     click(): void;
+    addEventListener(type: string, listener: (event: DomEvent) => void): void;
     dispatchEvent(event: DomEvent): boolean;
   }
 
@@ -102,6 +103,9 @@ declare module 'jsdom' {
       createObjectURL?: (file: DomFile) => string;
       revokeObjectURL?: (url: string) => void;
     };
+    /** The Web Speech API constructors. jsdom has neither; a test puts a stub here. */
+    SpeechRecognition?: unknown;
+    webkitSpeechRecognition?: unknown;
     /** Runs a script in the page, as a `<script>` element would. */
     eval(source: string): unknown;
     close(): void;

@@ -1,7 +1,7 @@
 /*
  * The "Analyzing..." state of the Add page. A form marked `data-analyze-form` is
  * answered only when the analyzer is done, which takes a while: when one is submitted,
- * the status is shown and the submit buttons are disabled, so the photo is not sent
+ * the status is shown and the submit buttons are disabled, so nothing is sent
  * twice. The submit itself goes on as it would without this script. Loaded with `defer`,
  * from the one page that has the status element.
  */
@@ -9,7 +9,7 @@
   var status = document.querySelector('[data-analyzing]');
   var forms = document.querySelectorAll('[data-analyze-form]');
 
-  /* Only the submit buttons: a disabled file input would be left out of the post. */
+  /* Only the submit buttons: a disabled file input or text box would be left out of the post. */
   function setBusy(busy) {
     var buttons = document.querySelectorAll('[data-analyze-form] [type="submit"]');
     var index;

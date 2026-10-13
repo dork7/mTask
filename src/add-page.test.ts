@@ -33,6 +33,10 @@ const NEW_CLASSES = [
   'photo-form__label',
   'photo-form__input',
   'photo-form__actions',
+  'text-form',
+  'text-form__label',
+  'text-form__input',
+  'text-form__actions',
   'analyzing',
   'analyzing__text',
 ];
@@ -125,6 +129,11 @@ async function openAdd(): Promise<OpenAdd> {
   };
 }
 
+/** The form of the Photo tab. */
+function photoFormOf(document: DomDocument): DomElement {
+  return one(document, 'main form[action="/add/photo"]');
+}
+
 function isHidden(element: DomElement): boolean {
   return element.hasAttribute('hidden');
 }
@@ -157,34 +166,33 @@ describe('GET /add (AC1)', () => {
     expect(one(document, '[aria-current="page"]').getAttribute('href')).toBe('/add');
   });
 
-  it('has a named tab list with exactly one tab, Photo, which is selected', async () => {
+  it('has one named tab list, in which Photo is the selected tab', async () => {
     const document = await getAdd();
     const tablist = one(document, 'main [role="tablist"]');
-    const tab = one(document, '[role="tab"]');
+    const tab = one(document, '[role="tab"][aria-selected="true"]');
 
     expect(all(document, '[role="tablist"]')).toHaveLength(1);
     expect(tablist.getAttribute('aria-label')?.trim()).toBeTruthy();
     expect(tablist.contains(tab)).toBe(true);
     expect(textOf(tab)).toBe('Photo');
-    expect(tab.getAttribute('aria-selected')).toBe('true');
   });
 
   it('ties the tab to its panel, which holds the form', async () => {
     const document = await getAdd();
-    const tab = one(document, '[role="tab"]');
-    const panel = one(document, '[role="tabpanel"]');
+    const tab = one(document, '[role="tab"][aria-selected="true"]');
+    const panel = one(document, '[role="tabpanel"]:not([hidden])');
 
     expect(tab.id).not.toBe('');
     expect(panel.id).not.toBe('');
     expect(tab.getAttribute('aria-controls')).toBe(panel.id);
     expect(panel.getAttribute('aria-labelledby')).toBe(tab.id);
-    expect(panel.contains(one(document, 'main form'))).toBe(true);
+    expect(panel.contains(photoFormOf(document))).toBe(true);
   });
 
   it('shows no message and no photo before anything is posted', async () => {
     const document = await getAdd();
 
-    expect(all(document, '[role="alert"]')).toEqual([]);
+    expect(all(document, '[role="alert"]').filter(isShown)).toEqual([]);
     // The "Analyzing..." status is in the page, hidden until a form is submitted.
     expect(all(document, '[role="status"]').filter(isShown)).toEqual([]);
     expect(all(document, 'main img[src]')).toEqual([]);
@@ -194,7 +202,7 @@ describe('GET /add (AC1)', () => {
 describe('the photo form (AC2)', () => {
   it('posts to /add/photo as multipart form data, with no script in the way', async () => {
     const document = await getAdd();
-    const form = one(document, 'main form');
+    const form = photoFormOf(document);
 
     expect(form.getAttribute('method')).toBe('post');
     expect(form.getAttribute('action')).toBe('/add/photo');
@@ -204,7 +212,7 @@ describe('the photo form (AC2)', () => {
 
   it('has one input, the file input as the plan writes it', async () => {
     const document = await getAdd();
-    const input = one(one(document, 'main form'), 'input');
+    const input = one(photoFormOf(document), 'input');
 
     expect(input.getAttribute('type')).toBe('file');
     expect(input.getAttribute('name')).toBe('photo');
@@ -216,7 +224,7 @@ describe('the photo form (AC2)', () => {
 
   it('labels the input', async () => {
     const document = await getAdd();
-    const form = one(document, 'main form');
+    const form = photoFormOf(document);
     const input = one(form, 'input');
     const label = one(form, 'label');
 
@@ -227,7 +235,7 @@ describe('the photo form (AC2)', () => {
 
   it('has one submit button, Upload photo', async () => {
     const document = await getAdd();
-    const form = one(document, 'main form');
+    const form = photoFormOf(document);
     const submit = one(form, 'button[type="submit"]');
 
     expect(textOf(submit)).toBe('Upload photo');
@@ -259,7 +267,7 @@ describe('the photo form (AC2)', () => {
 describe('the photo preview (AC3)', () => {
   it('is hidden in the served page, with the Retake button, before any script runs', async () => {
     const document = await getAdd();
-    const form = one(document, 'main form');
+    const form = photoFormOf(document);
     const preview = one(document, 'img[data-photo-preview]');
     const retake = one(document, 'button[data-photo-retake]');
 
@@ -274,11 +282,11 @@ describe('the photo preview (AC3)', () => {
     expect(isHidden(retake)).toBe(true);
   });
 
-  it('links to two scripts, each deferred, which the app serves as JavaScript', async () => {
+  it('links to three scripts, each deferred, which the app serves as JavaScript', async () => {
     const document = await getAdd();
     const scripts = all(document, 'script[src]');
 
-    expect(scripts.map((script) => script.getAttribute('src'))).toEqual(['/js/add-photo.js', '/js/add-analyzing.js']);
+    expect(scripts.map((script) => script.getAttribute('src'))).toEqual(['/js/add-photo.js', '/js/add-analyzing.js', '/js/add-voice.js']);
 
     for (const script of scripts) {
       expect(script.hasAttribute('defer')).toBe(true);
@@ -293,7 +301,7 @@ describe('the photo preview (AC3)', () => {
   it('stays hidden when the script loads with no file chosen', async () => {
     const { start, preview, retake, urls } = await openAdd();
 
-    await expect(start()).resolves.toEqual(['/js/add-photo.js', '/js/add-analyzing.js']);
+    await expect(start()).resolves.toEqual(['/js/add-photo.js', '/js/add-analyzing.js', '/js/add-voice.js']);
 
     expect(isHidden(preview)).toBe(true);
     expect(isHidden(retake)).toBe(true);

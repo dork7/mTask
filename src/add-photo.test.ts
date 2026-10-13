@@ -135,11 +135,13 @@ function expectRejected(response: request.Response, status: number, message: str
 
   const document = parseHtml(response.text);
   expectAddPage(document);
-  expect(all(document, '[role="alert"]')).toHaveLength(1);
-  expect(textOf(one(document, 'main [role="alert"]'))).toBe(message);
+  expect(all(document, 'main [role="alert"]').filter(isShown).map(textOf)).toEqual([message]);
   expect(all(document, '[role="status"]').filter(isShown)).toEqual([]);
+  expect(textOf(one(document, '[role="tab"][aria-selected="true"]'))).toBe('Photo');
 
-  const form = one(document, 'main form');
+  const forms = all(document, 'main form').filter(isShown);
+  expect(forms).toHaveLength(1);
+  const form = forms[0];
   expect(form.getAttribute('action')).toBe('/add/photo');
   expect(all(form, 'input[type="file"][name="photo"]')).toHaveLength(1);
 

@@ -17,7 +17,7 @@ export interface AppDeps {
   db: Database;
   /** The folder uploaded photos are stored in, as an absolute path. It may not exist yet. */
   uploadsDir: string;
-  /** Turns a stored photo into tasks. The real one asks the Anthropic API; a test hands in a stub. */
+  /** Turns a stored photo or a transcript into tasks. The real one asks the Anthropic API; a test hands in a stub. */
   analyze: Analyze;
 }
 

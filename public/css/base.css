@@ -693,15 +693,17 @@ h2 {
   border-radius: var(--radius);
 }
 
-/* Photo form */
-.photo-form {
+/* Photo form, and the text form of the Voice and Type tabs: a label, a control, the buttons. */
+.photo-form,
+.text-form {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
 }
 
-.photo-form__label {
+.photo-form__label,
+.text-form__label {
   font-weight: 700;
 }
 
@@ -724,10 +726,22 @@ h2 {
   cursor: pointer;
 }
 
-.photo-form__actions {
+.photo-form__actions,
+.text-form__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* The text box grows downwards only, so it never gets wider than the page. */
+.text-form__input {
+  resize: vertical;
+}
+
+/* A toggle that is on, such as the record button while it records. The label says it too. */
+.btn[aria-pressed="true"] {
+  color: var(--urgent);
+  border-color: var(--urgent);
 }
 
 /* Analyzing: shown by the page's script while a request waits for the analyzer. */

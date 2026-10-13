@@ -3,7 +3,7 @@ import { listSourceTasks, type Source } from '../db/sources.ts';
 import { createTask, deleteTask, listTasks, updateTask, type Task } from '../db/tasks.ts';
 import { inTransaction } from '../db/transaction.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
-import type { Analysis, Analyze } from './analyzer.ts';
+import type { Analysis, Analyze, AnalyzerInput } from './analyzer.ts';
 import { photoFile } from './photo-storage.ts';
 
 /*
@@ -31,24 +31,35 @@ export interface DraftDeps {
   analyze: Analyze;
 }
 
+/** What the analyzer is handed for a source, or `undefined` when the source has nothing to hand. */
+function inputOf(uploadsDir: string, source: Source): AnalyzerInput | undefined {
+  if (source.kind === 'photo') {
+    return source.image_path === null
+      ? undefined
+      : { kind: 'image', path: photoFile(uploadsDir, source.image_path) };
+  }
+  return source.transcript === null ? undefined : { kind: 'text', text: source.transcript };
+}
+
 /**
- * Runs the analyzer on the stored photo of a source and stores each task it returns as a
- * draft under that source, in the analyzer's order. Nothing is stored when the analyzer
- * rejects or returns its fallback (`'failed'`), or finds no task (`'none'`). The source
- * and its file are left as they are in every case.
+ * Runs the analyzer on a source, on the stored photo of a photo source and on the
+ * transcript of a voice or text source, and stores each task it returns as a draft under
+ * that source, in the analyzer's order. Nothing is stored when the analyzer rejects or
+ * returns its fallback (`'failed'`), or finds no task (`'none'`). The source and its
+ * file are left as they are in every case.
  *
  * A source that already has a task gets no second set: the outcome is still `'drafts'`.
  * A database error is thrown, and no part of the list is stored then.
  */
-export async function analyzePhotoSource(deps: DraftDeps, source: Source): Promise<AnalysisOutcome> {
-  if (source.image_path === null) return 'failed';
-  const file = photoFile(deps.uploadsDir, source.image_path);
+export async function analyzeSource(deps: DraftDeps, source: Source): Promise<AnalysisOutcome> {
+  const input = inputOf(deps.uploadsDir, source);
+  if (input === undefined) return 'failed';
 
   let analysis: Analysis;
   try {
-    analysis = await deps.analyze({ kind: 'image', path: file });
+    analysis = await deps.analyze(input);
   } catch (error) {
-    // The page says only that the photo could not be analyzed; the reason goes here.
+    // The page says only that it could not be analyzed; the reason goes here.
     console.error(`The analysis of source ${source.id} failed:`, error);
     return 'failed';
   }

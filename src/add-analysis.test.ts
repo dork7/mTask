@@ -165,9 +165,10 @@ function expectNoTasksPage(response: request.Response): void {
   const statuses = all(document, '[role="status"]').filter(isShown);
   expect(statuses).toHaveLength(1);
   expect(textOf(statuses[0])).toBe(NO_TASKS);
-  expect(all(document, '[role="alert"]')).toEqual([]);
+  expect(all(document, '[role="alert"]').filter(isShown)).toEqual([]);
+  expect(textOf(one(document, '[role="tab"][aria-selected="true"]'))).toBe('Photo');
 
-  expect(all(document, 'main form')).toHaveLength(1);
+  expect(all(document, 'main form').filter(isShown)).toHaveLength(1);
   expectUploadForm(document);
 }
 
@@ -179,9 +180,9 @@ function expectFailedPage(response: request.Response, sourceId = 1): void {
   const document = parseHtml(response.text);
   expectAddPage(document);
 
-  expect(all(document, '[role="alert"]')).toHaveLength(1);
-  expect(textOf(one(document, 'main [role="alert"]'))).toBe(NOT_ANALYZED);
+  expect(all(document, 'main [role="alert"]').filter(isShown).map(textOf)).toEqual([NOT_ANALYZED]);
   expect(all(document, '[role="status"]').filter(isShown)).toEqual([]);
+  expect(textOf(one(document, '[role="tab"][aria-selected="true"]'))).toBe('Photo');
 
   const retryForm = one(document, `main form[action="/review/${sourceId}/analyze"]`);
   expect(retryForm.getAttribute('method')).toBe('post');
@@ -189,7 +190,7 @@ function expectFailedPage(response: request.Response, sourceId = 1): void {
   expect(textOf(one(retryForm, 'button[type="submit"]'))).toBe('Try again');
   expect(all(retryForm, 'button')).toHaveLength(1);
 
-  expect(all(document, 'main form')).toHaveLength(2);
+  expect(all(document, 'main form').filter(isShown)).toHaveLength(2);
   expectUploadForm(document);
 }
 
@@ -464,17 +465,6 @@ describe('POST /review/:sourceId/analyze on a source that is not analyzed (AC5)'
       expect(tasks()).toEqual(before);
     },
   );
-
-  it('does not call the analyzer for a text source without tasks, and answers 303', async () => {
-    const source = createSource(testApp.db, { kind: 'text', transcript: 'buy milk' });
-
-    const response = await retry(source.id);
-
-    expect(response.status).toBe(303);
-    expect(response.headers.location).toBe(`/review/${source.id}`);
-    expect(analyze).not.toHaveBeenCalled();
-    expect(tasks()).toEqual([]);
-  });
 
   it('hands the analyzer a path inside the uploads folder, whatever the stored image path says', async () => {
     const source = createSource(testApp.db, { kind: 'photo', image_path: '/uploads/../../outside.png' });
