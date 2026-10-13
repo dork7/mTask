@@ -844,6 +844,12 @@ h2 {
   font-size: var(--font-size-sm);
 }
 
+/* Where a draft would land if it were confirmed now. */
+.land {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
 .choices {
   display: flex;
   flex-wrap: wrap;

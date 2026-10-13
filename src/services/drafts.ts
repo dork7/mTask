@@ -6,6 +6,7 @@ import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import type { Analysis, Analyze, AnalyzerInput } from './analyzer.ts';
 import { photoFile } from './photo-storage.ts';
 import { applyRules, readSlotRules } from './rules.ts';
+import { placeTasks, storeSchedule } from './scheduler.ts';
 
 /*
  * Drafts: the tasks the analyzer read from a source, kept apart until the user has
@@ -197,14 +198,20 @@ export function hasProblems(problems: DraftProblems): boolean {
 }
 
 /**
- * Stores the edits of these drafts and makes each of them a `pending` task, all or none.
- * A draft without an edit is confirmed as stored.
+ * Stores the edits of these drafts, makes each of them a `pending` task and gives it a
+ * time, all or none. A draft without an edit is confirmed as stored. The times are those
+ * the scheduler finds at `now` for the values that are stored; a task it pushes later
+ * for an urgent one gets its new time in the same write. A draft the scheduler cannot
+ * place is confirmed with no time.
  */
-export function confirmDrafts(db: Database, drafts: readonly Task[], edits: DraftEdits): void {
+export function confirmDrafts(db: Database, drafts: readonly Task[], edits: DraftEdits, now: Date): void {
   inTransaction(db, () => {
+    const confirmed: Task[] = [];
     for (const draft of drafts) {
-      updateTask(db, draft.id, { ...edits.byTask.get(draft.id), status: 'pending' });
+      const task = updateTask(db, draft.id, { ...edits.byTask.get(draft.id), status: 'pending' });
+      if (task !== undefined) confirmed.push(task);
     }
+    storeSchedule(db, placeTasks(db, confirmed, now));
   });
 }
 
