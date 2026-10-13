@@ -1,10 +1,16 @@
 <%#
-  chip: { label, selected?, tone? }
-  `tone` is a priority id; a selected chip takes that priority's colors.
+  chip: { label, selected?, tone?, href?, current?, removable? }
+  `tone` is a priority id; a selected chip takes that priority's colors. With `href` the
+  chip is a link: `current` marks it with aria-current="true", and `removable` adds a ×
+  that is decoration, so the label stays the link's name.
 -%>
 <%
   const classes = ['chip'];
   if (chip.selected) classes.push('chip--on');
   if (chip.tone) classes.push(`chip--${ui.priority(chip.tone).id}`);
 -%>
+<% if (chip.href) { -%>
+<a class="<%= classes.join(' ') %>" href="<%= chip.href %>"<% if (chip.current) { %> aria-current="true"<% } %>><%= chip.label %><% if (chip.removable) { %> <span aria-hidden="true">×</span><% } %></a>
+<% } else { -%>
 <span class="<%= classes.join(' ') %>"><%= chip.label %></span>
+<% } -%>
