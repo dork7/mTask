@@ -3,18 +3,23 @@ import multer from 'multer';
 import type { AppDeps } from '../app.ts';
 import { createSource, type Source } from '../db/sources.ts';
 import { renderPage } from '../render.ts';
+import { analyzePhotoSource, type AnalysisOutcome } from '../services/drafts.ts';
 import { PhotoTypeError, createPhotoUpload, photoUrl, removePhoto } from '../services/photo-storage.ts';
 
 const NOT_A_PHOTO = 'That file is not a photo. Choose a JPEG, PNG, WebP or GIF image.';
 const TOO_LARGE = 'That photo is larger than 10 MB. Choose a smaller one.';
 const NO_PHOTO = 'Choose a photo first.';
+const NO_TASKS = 'No tasks were found in that photo.';
+const NOT_ANALYZED = 'The photo could not be analyzed.';
 
-/** What `pages/add.ejs` reads. Both fields are always present. */
+/** What `pages/add.ejs` reads. All three fields are always present. */
 interface AddPage {
-  /** Why the last post was refused, or `null`. */
+  /** Why the last post was refused or failed, or `null`. */
   error: string | null;
-  /** The `image_path` of the photo the last post stored, or `null`. */
-  savedPhoto: string | null;
+  /** What the last post found when that is not an error, or `null`. */
+  notice: string | null;
+  /** Where the `Try again` form posts to analyze a stored photo again, or `null`. */
+  retryAction: string | null;
 }
 
 /** Renders the Add page with this status. Every answer of this router goes through here. */
@@ -23,11 +28,37 @@ function renderAdd(res: Response, status: number, addPage: Partial<AddPage> = {}
   renderPage(res, 'add', {
     title: 'Add task',
     nav: 'add',
-    addPage: { error: addPage.error ?? null, savedPhoto: addPage.savedPhoto ?? null },
+    addPage: {
+      error: addPage.error ?? null,
+      notice: addPage.notice ?? null,
+      retryAction: addPage.retryAction ?? null,
+    },
   });
 }
 
-/** The Add screen and the upload of its Photo tab. */
+/** The address of the review page of a source. */
+export function reviewPath(sourceId: number): string {
+  return `/review/${sourceId}`;
+}
+
+/**
+ * Answers a request whose photo has been analyzed: with the review page of its drafts,
+ * or with the Add page saying that nothing was found, or that the analysis failed and
+ * can be tried again. The upload and the retry both answer through here.
+ */
+export function answerAnalysis(res: Response, source: Source, outcome: AnalysisOutcome): void {
+  if (outcome === 'drafts') {
+    res.redirect(303, reviewPath(source.id));
+    return;
+  }
+  if (outcome === 'none') {
+    renderAdd(res, 200, { notice: NO_TASKS });
+    return;
+  }
+  renderAdd(res, 502, { error: NOT_ANALYZED, retryAction: `${reviewPath(source.id)}/analyze` });
+}
+
+/** The Add screen and the upload of its Photo tab, which is analyzed before it is answered. */
 export function createAddRouter(deps: AppDeps): Router {
   const router = Router();
   const upload = createPhotoUpload(deps.uploadsDir);
@@ -72,7 +103,11 @@ export function createAddRouter(deps: AppDeps): Router {
         removePhoto(file.path, () => next(failure));
         return;
       }
-      renderAdd(res, 201, { savedPhoto: source.image_path });
+      // The request is answered when the analysis is done. `catch` also takes an error
+      // thrown while answering.
+      analyzePhotoSource(deps, source)
+        .then((outcome) => answerAnalysis(res, source, outcome))
+        .catch(next);
     });
   });
 

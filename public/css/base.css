@@ -684,7 +684,7 @@ h2 {
   border-color: var(--urgent);
 }
 
-/* A photo: the one just saved, and the preview of the one chosen. */
+/* A photo: the preview of the one chosen, and the one a set of drafts was read from. */
 .photo {
   display: block;
   max-width: 100%;
@@ -728,6 +728,151 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* Analyzing: shown by the page's script while a request waits for the analyzer. */
+.analyzing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.analyzing__text {
+  font-weight: 700;
+}
+
+/* Field: a text input, a number input or a select in a form. */
+.field {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+/* Source: the photo or the transcript the drafts were read from, closed until asked for. */
+.source {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.source__summary {
+  padding: var(--space-3);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.source > .photo,
+.source__text {
+  margin: 0 var(--space-3) var(--space-3);
+}
+
+.source__text {
+  white-space: pre-wrap;
+}
+
+/* Review: one card per draft, in one form, above a bar that stays in view. */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.drafts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.draft__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.draft__flag {
+  margin-right: auto;
+  color: var(--high);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepper__input {
+  width: 6rem;
+}
+
+.stepper__unit {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.choice input {
+  accent-color: var(--accent);
+}
+
+.choice input:checked + span {
+  font-weight: 700;
+}
+
+/* The bar sits on the tab bar; its bottom padding clears the raised Add button. */
+.review-bar {
+  position: sticky;
+  bottom: var(--nav-height);
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-4);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.review-bar .btn {
+  flex: 1;
 }
 
 /* ---------- Style guide ---------- */
@@ -859,6 +1004,10 @@ h2 {
 
   .toast-region {
     bottom: var(--space-6);
+  }
+
+  .review-bar {
+    bottom: 0;
   }
 }
 

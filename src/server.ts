@@ -1,6 +1,14 @@
 import { createApp } from './app.ts';
-import { getDatabasePath, getPort, getUploadsDir, loadEnv } from './config.ts';
+import {
+  getAnthropicApiKey,
+  getAnthropicModel,
+  getDatabasePath,
+  getPort,
+  getUploadsDir,
+  loadEnv,
+} from './config.ts';
 import { openDatabase } from './db/database.ts';
+import { createAnalyze } from './services/analyzer.ts';
 
 loadEnv();
 const port = getPort();
@@ -8,7 +16,9 @@ const port = getPort();
 // The database is opened once, here, and handed down. When it cannot be opened the
 // process stops before it listens. The process ending closes it.
 const db = openDatabase(getDatabasePath());
-const app = createApp({ db, uploadsDir: getUploadsDir() });
+// Without a key the server still starts: the analyzer then refuses every photo.
+const analyze = createAnalyze(getAnthropicApiKey(), getAnthropicModel());
+const app = createApp({ db, uploadsDir: getUploadsDir(), analyze });
 
 // Express 5 also calls this callback, with the error, when the server fails to
 // listen (a port already in use, for example). Rethrowing stops the process with

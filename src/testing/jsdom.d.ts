@@ -54,6 +54,11 @@ declare module 'jsdom' {
     readonly files: DomFileList;
   }
 
+  /** An `<input>` that holds text, a `<select>`, or any other control with a value. */
+  export interface DomInput extends DomElement {
+    value: string;
+  }
+
   export interface DomEvent {
     readonly type: string;
   }
@@ -89,7 +94,9 @@ declare module 'jsdom' {
     /** jsdom reports an exception no script caught as an `error` event on the window. */
     addEventListener(type: 'error', listener: (event: DomErrorEvent) => void): void;
     readonly File: new (parts: string[], name: string, options?: { type?: string }) => DomFile;
-    readonly Event: new (type: string, init?: { bubbles?: boolean }) => DomEvent;
+    readonly Event: new (type: string, init?: { bubbles?: boolean; cancelable?: boolean }) => DomEvent;
+    /** Returns `false` when a listener called `preventDefault` on a cancelable event. */
+    dispatchEvent(event: DomEvent): boolean;
     /** jsdom has neither of the two object URL functions; a test puts them here. */
     readonly URL: {
       createObjectURL?: (file: DomFile) => string;

@@ -88,8 +88,9 @@ describe('project commands (AC6)', () => {
   // The child is stopped after LOAD_TIMEOUT_MS, so a createApp() that keeps the
   // process alive fails this test instead of hanging the suite. spawnSync blocks,
   // and Vitest cannot interrupt it; the test's own timeout only has to be longer.
-  // The app gets an in-memory database and an uploads folder that does not exist and
-  // is never created, passed as the argument after the script.
+  // The app gets an in-memory database, an uploads folder that does not exist and is
+  // never created, passed as the argument after the script, and an analyzer that finds
+  // nothing.
   it(
     'plain Node, the runtime of the dev command, can load the app',
     () => {
@@ -97,7 +98,8 @@ describe('project commands (AC6)', () => {
       const script = [
         "const { createApp } = await import('./src/app.ts');",
         "const { openDatabase } = await import('./src/db/database.ts');",
-        "createApp({ db: openDatabase(':memory:'), uploadsDir: process.argv[1] });",
+        "const analyze = async () => ({ tasks: [], fallback: false });",
+        "createApp({ db: openDatabase(':memory:'), uploadsDir: process.argv[1], analyze });",
       ].join(' ');
       const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, uploadsDir], {
         cwd: rootDir,

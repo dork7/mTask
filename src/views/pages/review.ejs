@@ -1,0 +1,95 @@
+<%#
+  The Review screen: what the analyzer read from one source, before any of it is saved.
+  review: { source, cards, savedCount, errors, confirmAction, discardAction }
+  `source` is the row of the photo or the transcript. `cards` are its drafts, each with
+  the values of its controls and the names they post under (`fields`). `savedCount` is
+  how many tasks the source has when it has no draft, else 0. `errors` are the messages
+  of a refused confirm. `confirmAction` and `discardAction` are where the form posts.
+  With cards the page is the form; without, it says how many tasks are saved, or that
+  there is nothing to review.
+  The − and + buttons are shown and worked by /js/review.js; without it the minutes can
+  still be typed and the form still posts.
+-%>
+<% if (review.cards.length > 0) { -%>
+<%- include('../partials/page-header', { pageHeader: {
+  heading: `Review ${review.cards.length} ${review.cards.length === 1 ? 'task' : 'tasks'}`,
+  sub: 'Nothing saved yet',
+} }) -%>
+
+<details class="source">
+<% if (review.source.kind === 'photo') { -%>
+  <summary class="source__summary">Photo</summary>
+  <img class="photo" src="<%= review.source.image_path %>" alt="The photo these tasks were read from">
+<% } else { -%>
+  <summary class="source__summary">Transcript</summary>
+  <p class="source__text"><%= review.source.transcript %></p>
+<% } -%>
+</details>
+
+<% if (review.errors.length > 0) { -%>
+<div class="notice notice--error" role="alert">
+<% for (const message of review.errors) { -%>
+  <p><%= message %></p>
+<% } -%>
+</div>
+<% } -%>
+<%# The hidden first button is the one Enter presses in a field: without it Enter would remove the first card. -%>
+<form class="review-form" method="post" action="<%= review.confirmAction %>">
+  <%- include('../partials/button', { button: { label: 'Confirm all', type: 'submit', attrs: { hidden: '' } } }) -%>
+  <ol class="drafts">
+<% for (const card of review.cards) { -%>
+    <li class="card draft" data-draft="<%= card.id %>">
+      <div class="draft__row">
+<% if (card.lowConfidence) { -%>
+        <span class="draft__flag"><span aria-hidden="true">⚠</span> Low confidence</span>
+<% } -%>
+        <%- include('../partials/button', { button: { label: 'Remove', variant: 'ghost', type: 'submit', attrs: { formaction: card.removeAction, formnovalidate: '' } } }) -%>
+      </div>
+      <input class="field" type="text" name="<%= card.fields.title %>" value="<%= card.title %>" aria-label="Task title" required>
+      <div class="stepper" data-stepper>
+        <%- include('../partials/button', { button: { label: '−', variant: 'ghost', attrs: { 'data-minutes-step': '-5', 'aria-label': '5 minutes less', hidden: '' } } }) -%>
+        <input class="field stepper__input" type="number" name="<%= card.fields.minutes %>" value="<%= card.minutes %>" min="1" max="1440" aria-label="Minutes" required data-minutes>
+        <%- include('../partials/button', { button: { label: '+', variant: 'ghost', attrs: { 'data-minutes-step': '5', 'aria-label': '5 minutes more', hidden: '' } } }) -%>
+        <span class="stepper__unit" aria-hidden="true">min</span>
+      </div>
+      <fieldset class="choices">
+        <legend class="visually-hidden">Priority</legend>
+<% for (const item of ui.priorities) { -%>
+        <label class="choice">
+          <input type="radio" name="<%= card.fields.priority %>" value="<%= item.id %>"<% if (card.priority === item.id) { %> checked<% } %>>
+          <span><span aria-hidden="true"><%= item.glyph %></span> <%= item.label %></span>
+        </label>
+<% } -%>
+      </fieldset>
+      <select class="field" name="<%= card.fields.slot %>" aria-label="Time slot">
+        <option value=""<% if (card.slot === '') { %> selected<% } %>>No slot</option>
+<% for (const item of ui.slots) { -%>
+        <option value="<%= item.id %>"<% if (card.slot === item.id) { %> selected<% } %>><%= item.label %></option>
+<% } -%>
+      </select>
+    </li>
+<% } -%>
+  </ol>
+  <div class="review-bar">
+    <%- include('../partials/button', { button: { label: 'Discard', variant: 'ghost', type: 'submit', attrs: { formaction: review.discardAction, formnovalidate: '' } } }) -%>
+    <%- include('../partials/button', { button: { label: `Confirm all (${review.cards.length})`, type: 'submit' } }) -%>
+  </div>
+</form>
+<script src="/js/review.js" defer></script>
+<% } else if (review.savedCount > 0) { -%>
+<%- include('../partials/page-header', { pageHeader: {
+  heading: `${review.savedCount} ${review.savedCount === 1 ? 'task' : 'tasks'} saved`,
+} }) -%>
+
+<p>
+  <%- include('../partials/button', { button: { label: 'Add another', href: '/add' } }) -%>
+</p>
+<% } else { -%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Review' } }) -%>
+
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'Nothing to review',
+  text: 'This photo or note has no tasks waiting.',
+  actions: include('../partials/button', { button: { label: 'Add a task', href: '/add' } }),
+} }) -%>
+<% } -%>

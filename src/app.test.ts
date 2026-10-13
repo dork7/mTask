@@ -151,7 +151,7 @@ describe('app without a listener (AC4)', () => {
     const listen = vi.spyOn(http.Server.prototype, 'listen');
 
     const fresh = await import('./app.ts');
-    const app = fresh.createApp({ db: testApp.db, uploadsDir: testApp.uploadsDir });
+    const app = fresh.createApp({ db: testApp.db, uploadsDir: testApp.uploadsDir, analyze: testApp.analyze });
 
     expect(app).toBeTypeOf('function');
     expect(listen).not.toHaveBeenCalled();
@@ -162,10 +162,10 @@ describe('the uploads folder of an app (AC11)', () => {
   it('must be an absolute path, so nothing is stored under the working folder', async () => {
     const { createApp } = await import('./app.ts');
 
-    expect(() => createApp({ db: testApp.db, uploadsDir: 'uploads' })).toThrow(
+    expect(() => createApp({ db: testApp.db, uploadsDir: 'uploads', analyze: testApp.analyze })).toThrow(
       'The uploads folder must be an absolute path, got "uploads"',
     );
-    expect(() => createApp({ db: testApp.db, uploadsDir: '' })).toThrow(
+    expect(() => createApp({ db: testApp.db, uploadsDir: '', analyze: testApp.analyze })).toThrow(
       'The uploads folder must be an absolute path, got ""',
     );
   });

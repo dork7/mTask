@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm } from 'node:fs';
+import path from 'node:path';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
 
@@ -46,6 +47,14 @@ export function photoExtension(mimetype: string): string | undefined {
 /** The URL path a stored photo is served at. */
 export function photoUrl(filename: string): string {
   return `${UPLOADS_URL_PATH}/${filename}`;
+}
+
+/**
+ * The file of a stored photo, from the `image_path` of its source. Only the last segment
+ * of `imagePath` is used, so no stored value can name a file outside `uploadsDir`.
+ */
+export function photoFile(uploadsDir: string, imagePath: string): string {
+  return path.join(uploadsDir, path.posix.basename(imagePath));
 }
 
 /**

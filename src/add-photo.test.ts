@@ -4,10 +4,11 @@ import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import type { Express } from 'express';
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.ts';
-import { createTestApp, type TestApp } from './testing/app.ts';
-import { all, one, parseHtml, textOf, type DomDocument } from './testing/dom.ts';
+import type { Analyze } from './services/analyzer.ts';
+import { createTestApp, oneTaskAnalysis, type TestApp } from './testing/app.ts';
+import { all, isShown, one, parseHtml, textOf, type DomDocument } from './testing/dom.ts';
 
 const NOT_A_PHOTO = 'That file is not a photo. Choose a JPEG, PNG, WebP or GIF image.';
 const TOO_LARGE = 'That photo is larger than 10 MB. Choose a smaller one.';
@@ -55,9 +56,12 @@ interface Part {
 }
 
 let testApp: TestApp;
+/** The analyzer of the app: a stub that finds one task, so a stored photo ends in a redirect. */
+let analyze: ReturnType<typeof vi.fn<Analyze>>;
 
 beforeEach(() => {
-  testApp = createTestApp();
+  analyze = vi.fn<Analyze>(() => Promise.resolve(oneTaskAnalysis()));
+  testApp = createTestApp({ analyze });
 });
 
 afterEach(() => {
@@ -125,7 +129,7 @@ function expectAddPage(document: DomDocument): void {
   expect(textOf(one(document, 'main h1'))).toBe('Add task');
 }
 
-/** Asserts everything AC10 says of a rejection. */
+/** Asserts everything AC10 says of a rejection, and that the analyzer was not asked (006 AC2). */
 function expectRejected(response: request.Response, status: number, message: string): void {
   expect(response.status).toBe(status);
 
@@ -133,7 +137,7 @@ function expectRejected(response: request.Response, status: number, message: str
   expectAddPage(document);
   expect(all(document, '[role="alert"]')).toHaveLength(1);
   expect(textOf(one(document, 'main [role="alert"]'))).toBe(message);
-  expect(all(document, '[role="status"]')).toEqual([]);
+  expect(all(document, '[role="status"]').filter(isShown)).toEqual([]);
 
   const form = one(document, 'main form');
   expect(form.getAttribute('action')).toBe('/add/photo');
@@ -141,6 +145,7 @@ function expectRejected(response: request.Response, status: number, message: str
 
   expect(storedFiles()).toEqual([]);
   expect(sources()).toEqual([]);
+  expect(analyze).not.toHaveBeenCalled();
 }
 
 /**
@@ -175,27 +180,20 @@ describe('POST /add/photo with a photo (AC4)', () => {
 
     const response = await upload({ bytes, type, filename: 'list' });
 
-    expect(response.status).toBe(201);
-    expect(response.headers['content-type']).toMatch(/^text\/html/);
+    expect(response.status).toBe(303);
+    expect(response.headers.location).toBe('/review/1');
 
     const name = storedFile();
     expect(name).toMatch(STORED_NAME);
     expect(path.extname(name)).toBe(extension);
     expect(readFileSync(path.join(testApp.uploadsDir, name)).equals(bytes)).toBe(true);
     expect(sources()).toEqual([{ id: 1, kind: 'photo', image_path: `/uploads/${name}`, transcript: null }]);
-
-    const document = parseHtml(response.text);
-    expectAddPage(document);
-    expect(textOf(one(document, 'main [role="status"]'))).toBe('Photo saved.');
-    expect(all(document, 'main img[src]').map((img) => img.getAttribute('src'))).toEqual([`/uploads/${name}`]);
-    expect(all(document, '[role="alert"]')).toEqual([]);
-    expect(one(document, 'main form').getAttribute('action')).toBe('/add/photo');
   });
 
   it.each(['IMAGE/PNG', 'image/png; charset=binary'])('reads a declared type of "%s" as image/png', async (type) => {
     const response = await upload({ type, filename: 'list' });
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(303);
     expect(storedFile()).toMatch(/\.png$/);
   });
 
@@ -207,6 +205,7 @@ describe('POST /add/photo with a photo (AC4)', () => {
     expect(response.status).toBe(500);
     expect(existsSync(testApp.uploadsDir)).toBe(true);
     expect(storedFiles()).toEqual([]);
+    expect(analyze).not.toHaveBeenCalled();
   });
 });
 
@@ -283,7 +282,7 @@ describe('the name of a stored photo (AC6)', () => {
         { name: 'photo', filename: '../../evil.png', type: 'image/png', bytes: PNG_SIGNATURE },
       ]);
 
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(303);
       expect(existsSync(outside)).toBe(false);
       expect(readdirSync(testApp.dir)).toEqual(['uploads']);
       expect(storedFile()).toMatch(STORED_NAME);
@@ -298,7 +297,7 @@ describe('the name of a stored photo (AC6)', () => {
     async (filename) => {
       const response = await postParts([{ name: 'photo', filename, type: 'image/webp', bytes: PNG_SIGNATURE }]);
 
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(303);
       expect(readdirSync(testApp.dir)).toEqual(['uploads']);
       expect(storedFile()).toMatch(STORED_NAME);
       expect(storedFile()).toMatch(/\.webp$/);
@@ -309,7 +308,7 @@ describe('the name of a stored photo (AC6)', () => {
     const first = await upload({ filename: 'same.png' });
     const second = await upload({ filename: 'same.png' });
 
-    expect([first.status, second.status]).toEqual([201, 201]);
+    expect([first.status, second.status]).toEqual([303, 303]);
 
     const names = storedFiles();
     expect(names).toHaveLength(2);
@@ -351,7 +350,7 @@ describe('a file that is not a photo (AC7, AC10)', () => {
 
     const response = await upload({ bytes, filename: 'notes.txt', type: 'image/png' });
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(303);
     expect(storedFile()).toMatch(/\.png$/);
     expect(readFileSync(path.join(testApp.uploadsDir, storedFile())).equals(bytes)).toBe(true);
   });
@@ -369,7 +368,7 @@ describe('a photo that is too large (AC8, AC10)', () => {
 
     const response = await upload({ bytes, type: 'image/jpeg' });
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(303);
     expect(readFileSync(path.join(testApp.uploadsDir, storedFile())).equals(bytes)).toBe(true);
     expect(sources()).toHaveLength(1);
   });
@@ -431,7 +430,7 @@ describe('a post with no file in photo (AC9, AC10)', () => {
 describe('the uploads folder (AC11)', () => {
   it('is created with its parents when the first photo is stored, not before', async () => {
     const uploadsDir = path.join(testApp.dir, 'not', 'there', 'uploads');
-    const app = createApp({ db: testApp.db, uploadsDir });
+    const app = createApp({ db: testApp.db, uploadsDir, analyze: testApp.analyze });
 
     const page = await request(app).get('/add');
 
@@ -440,7 +439,7 @@ describe('the uploads folder (AC11)', () => {
 
     const response = await upload({}, app);
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(303);
     expect(storedFiles(uploadsDir)).toHaveLength(1);
   });
 
@@ -451,7 +450,7 @@ describe('the uploads folder (AC11)', () => {
 
     const response = await upload();
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(303);
     expect(storedFiles()).toHaveLength(1);
   });
 });
