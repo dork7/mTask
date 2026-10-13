@@ -5,6 +5,7 @@ import { inTransaction } from '../db/transaction.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import type { Analysis, Analyze, AnalyzerInput } from './analyzer.ts';
 import { photoFile } from './photo-storage.ts';
+import { applyRules, readSlotRules } from './rules.ts';
 
 /*
  * Drafts: the tasks the analyzer read from a source, kept apart until the user has
@@ -44,9 +45,10 @@ function inputOf(uploadsDir: string, source: Source): AnalyzerInput | undefined 
 /**
  * Runs the analyzer on a source, on the stored photo of a photo source and on the
  * transcript of a voice or text source, and stores each task it returns as a draft under
- * that source, in the analyzer's order. Nothing is stored when the analyzer rejects or
- * returns its fallback (`'failed'`), or finds no task (`'none'`). The source and its
- * file are left as they are in every case.
+ * that source, in the analyzer's order. Each draft gets its priority and its slot from the
+ * rules of `rules.ts`, with the `slot_rules` setting as it is when the drafts are stored.
+ * Nothing is stored when the analyzer rejects or returns its fallback (`'failed'`), or
+ * finds no task (`'none'`). The source and its file are left as they are in every case.
  *
  * A source that already has a task gets no second set: the outcome is still `'drafts'`.
  * A database error is thrown, and no part of the list is stored then.
@@ -72,14 +74,18 @@ export async function analyzeSource(deps: DraftDeps, source: Source): Promise<An
     // Another request analyzed this source while this one waited for the analyzer.
     if (listSourceTasks(deps.db, source.id).length > 0) return;
 
+    // Read once, so every draft of one analysis goes by the same rules.
+    const rules = readSlotRules(deps.db);
     for (const task of analysis.tasks) {
+      const ruled = applyRules(rules, task.category, task.urgency);
       createTask(deps.db, {
         title: task.title,
         description: task.description,
         category: task.category,
         estimated_minutes: task.estimated_minutes,
         confidence: task.confidence,
-        priority: task.urgency,
+        priority: ruled.priority,
+        time_slot: ruled.time_slot,
         status: 'draft',
         source_id: source.id,
       });

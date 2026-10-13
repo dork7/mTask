@@ -1,4 +1,18 @@
+import type { Slot } from '../ui.ts';
 import type { Database } from './database.ts';
+
+/**
+ * One slot rule: a task of this category belongs to this part of the day. `start` and
+ * `end` are the rule's own window, `HH:MM` on a 24-hour clock, on the user's clock.
+ * `category` is a category as the analyzer names it; a rule for a name no task has
+ * applies to nothing.
+ */
+export interface SlotRule {
+  category: string;
+  time_slot: Slot;
+  start: string;
+  end: string;
+}
 
 /**
  * Every setting and the type of its value. A value is stored as JSON under its key.
@@ -7,6 +21,8 @@ import type { Database } from './database.ts';
 export interface Settings {
   /** The hours tasks may be scheduled in: `HH:MM` on a 24-hour clock, on the user's clock. */
   working_hours: { start: string; end: string };
+  /** The category rules, in the order they apply: the first rule that names a category is the one used. */
+  slot_rules: SlotRule[];
 }
 
 export type SettingKey = keyof Settings;

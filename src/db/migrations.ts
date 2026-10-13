@@ -72,6 +72,10 @@ CREATE TABLE settings (
 
 INSERT INTO settings (key, value) VALUES ('working_hours', '{"start":"09:00","end":"22:00"}');
 `,
+  // 2: the slot rules: the part of the day a category of task belongs to.
+  `
+INSERT INTO settings (key, value) VALUES ('slot_rules', '[{"category":"coding","time_slot":"morning","start":"09:00","end":"11:00"},{"category":"shopping","time_slot":"night","start":"20:00","end":"22:00"}]');
+`,
 ];
 
 /**
