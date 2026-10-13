@@ -5,6 +5,7 @@ import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
 import { homeRouter } from './routes/home.ts';
+import { createOverdueRouter } from './routes/overdue.ts';
 import { createReviewRouter } from './routes/review.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
 import { createTasksRouter } from './routes/tasks.ts';
@@ -61,6 +62,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createAddRouter(deps));
   app.use(createReviewRouter(deps));
   app.use(createTasksRouter(deps));
+  app.use(createOverdueRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {
