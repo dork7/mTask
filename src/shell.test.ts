@@ -135,7 +135,7 @@ describe('navigation (AC3)', () => {
     expect(all(navOf(parseHtml(html)), 'a')).toHaveLength(5);
   });
 
-  it.each(['/no-such-page', '/timeline', '/_styleguide'])('marks no link as current on %s', async (path) => {
+  it.each(['/no-such-page', '/_styleguide'])('marks no link as current on %s', async (path) => {
     const { document } = await getPage(path);
 
     expect(currentLinks(document)).toEqual([]);
@@ -337,7 +337,7 @@ describe('existing pages in the new layout (AC7)', () => {
     expect(one(document, '[data-theme-toggle]').tagName).toBe('BUTTON');
   });
 
-  it.each(['/timeline', '/more'])(
+  it.each(['/more'])(
     '%s answers with the not-found page until its job builds it',
     async (path) => {
       const { status, document } = await getPage(path);
