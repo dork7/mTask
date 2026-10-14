@@ -1,0 +1,14 @@
+<%#
+  miniBar: { title, href, timer, doneAction }
+  The task in progress, on every page: its title as a link to its sheet, its timer when
+  it has a start, and Done. The layout writes it after `main`.
+-%>
+<aside class="mini-bar" id="mini-bar" aria-label="In progress">
+  <a class="mini-bar__title" href="<%= miniBar.href %>"><%= miniBar.title %></a>
+<% if (miniBar.timer !== null) { -%>
+  <%- include('timer', { timer: miniBar.timer }) -%>
+<% } -%>
+  <form method="post" action="<%= miniBar.doneAction %>">
+    <%- include('button', { button: { label: 'Done', type: 'submit' } }) -%>
+  </form>
+</aside>

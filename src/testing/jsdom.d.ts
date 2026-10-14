@@ -106,6 +106,10 @@ declare module 'jsdom' {
     /** The Web Speech API constructors. jsdom has neither; a test puts a stub here. */
     SpeechRecognition?: unknown;
     webkitSpeechRecognition?: unknown;
+    /** The page's own `Date`. `stubClock` replaces `now`. */
+    readonly Date: { now: () => number };
+    /** The page's own `setInterval`. `stubClock` replaces it. */
+    setInterval: (run: () => void, every: number) => number;
     /** Runs a script in the page, as a `<script>` element would. */
     eval(source: string): unknown;
     close(): void;

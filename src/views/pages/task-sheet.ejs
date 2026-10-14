@@ -1,0 +1,13 @@
+<%#
+  The detail sheet of one task, as a page of its own, open over nothing else.
+  sheet: { status, started, timer, completed, summary, startAction, doneAction, closeHref, form, errors }
+  The heading is the page's title, the task's title. The body and the actions are built
+  by the two task-sheet partials.
+-%>
+<%- include('../partials/bottom-sheet', { bottomSheet: {
+  id: 'task-sheet',
+  heading: title,
+  body: include('../partials/task-sheet-body', { sheet }),
+  actions: include('../partials/task-sheet-actions', { sheet }),
+  open: true,
+} }) -%>

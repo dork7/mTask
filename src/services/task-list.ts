@@ -26,6 +26,16 @@ export interface ListQuery {
 /** The path of the list. */
 export const LIST_PATH = '/tasks';
 
+/** The address of one task: its sheet, and the prefix of its actions. */
+export function taskPath(id: number): string {
+  return `${LIST_PATH}/${id}`;
+}
+
+/** Where Done posts from the sheet and the mini-bar, so that it answers with the sheet. */
+export function sheetDoneAction(id: number): string {
+  return `${taskPath(id)}/done?from=sheet`;
+}
+
 /** Whether a task is one the list shows and its routes act on: any but a draft. */
 export function isListed(task: Task): boolean {
   return task.status !== 'draft';

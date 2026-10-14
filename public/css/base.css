@@ -1103,6 +1103,66 @@ h2 {
   background: var(--urgent);
 }
 
+/* The ways to a task's sheet: its title on a card, and a block of the timeline, whose link covers the block. */
+.task__title a,
+.blk__title a {
+  color: inherit;
+}
+
+.blk__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* The detail sheet of a task: its state, its timer, what it took, then its edit form. */
+.task-sheet__status,
+.task-sheet__started,
+.task-sheet__completed {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.task-sheet__timer {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+}
+
+.task-sheet__summary {
+  font-weight: 700;
+}
+
+.task-sheet__description {
+  resize: vertical;
+}
+
+/* A running timer: its digits keep their width as they change. */
+.timer {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The task in progress, on every page: it sits on the tab bar, and at the bottom on wide screens. */
+.mini-bar {
+  position: sticky;
+  bottom: var(--nav-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+.mini-bar__title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Style guide ---------- */
 
 .sg-section {
@@ -1235,6 +1295,10 @@ h2 {
   }
 
   .review-bar {
+    bottom: 0;
+  }
+
+  .mini-bar {
     bottom: 0;
   }
 }

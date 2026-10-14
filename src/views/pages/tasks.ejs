@@ -60,7 +60,7 @@
 <ol class="task-list">
 <% for (const card of tasks.cards) { -%>
   <li class="card task" id="task-<%= card.id %>">
-    <h2 class="task__title"><%= card.title %></h2>
+    <h2 class="task__title"><a href="<%= card.href %>"><%= card.title %></a></h2>
     <p class="task__meta">
       <span class="task__minutes"><%= card.minutes %></span>
 <% if (card.priority !== null) { -%>
