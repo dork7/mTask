@@ -8,6 +8,7 @@ import { homeRouter } from './routes/home.ts';
 import { createReviewRouter } from './routes/review.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
 import { createTasksRouter } from './routes/tasks.ts';
+import { createTimelineRouter } from './routes/timeline.ts';
 import type { Analyze } from './services/analyzer.ts';
 import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
 import { ui } from './ui.ts';
@@ -61,6 +62,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createAddRouter(deps));
   app.use(createReviewRouter(deps));
   app.use(createTasksRouter(deps));
+  app.use(createTimelineRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {

@@ -1,0 +1,46 @@
+<%#
+  The timeline of one Dubai day.
+  timeline: { heading, previousHref, nextHref, todayHref, height, hours, bands, blocks, now }
+  Every position is worked out by the route, in percent of the axis, and written as an
+  inline style. The bands come first so that the blocks are drawn over them. `todayHref`
+  and `now` are null when there is no Today link or no now line.
+-%>
+<%- include('../partials/page-header', { pageHeader: {
+  heading: 'Timeline',
+  actions: timeline.todayHref === null ? undefined : include('../partials/button', { button: { label: 'Today', variant: 'ghost', href: timeline.todayHref } }),
+} }) -%>
+
+<div class="day-switcher">
+  <%- include('../partials/button', { button: { label: '‹', variant: 'ghost', href: timeline.previousHref, attrs: { 'aria-label': 'Previous day' } } }) -%>
+  <h2 class="day-switcher__day"><%= timeline.heading %></h2>
+  <%- include('../partials/button', { button: { label: '›', variant: 'ghost', href: timeline.nextHref, attrs: { 'aria-label': 'Next day' } } }) -%>
+</div>
+
+<% if (timeline.blocks.length === 0) { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'Nothing scheduled',
+  actions: include('../partials/button', { button: { label: 'Add a task', href: '/add' } }),
+} }) -%>
+<% } -%>
+
+<div class="tl" style="height: <%= timeline.height %>">
+<% for (const band of timeline.bands) { -%>
+  <div class="band" data-slot="<%= band.slot %>" style="top: <%= band.top %>; height: <%= band.height %>"><%= band.label %></div>
+<% } -%>
+<% for (const hour of timeline.hours) { -%>
+  <span class="hour" style="top: <%= hour.top %>"><%= hour.label %></span>
+<% } -%>
+<% if (timeline.blocks.length > 0) { -%>
+  <ol class="tl__blocks">
+<% for (const block of timeline.blocks) { -%>
+    <li class="blk k-<%= block.tone %><% if (block.conflict) { %> conflict<% } %>" id="block-<%= block.id %>" style="<%= block.style %>">
+      <p class="blk__title"><% if (block.urgent) { %><span aria-hidden="true"><%= ui.priority('urgent').glyph %></span> <% } %><%= block.title %></p>
+      <p class="blk__meta"><%= block.time %><% if (block.status !== null) { %> · <%= block.status %><% } %><% if (block.conflict) { %> <span class="visually-hidden">Conflict</span><span aria-hidden="true">⚠</span><% } %></p>
+    </li>
+<% } -%>
+  </ol>
+<% } -%>
+<% if (timeline.now !== null) { -%>
+  <div class="now" style="top: <%= timeline.now %>"><span class="visually-hidden">Now</span></div>
+<% } -%>
+</div>
