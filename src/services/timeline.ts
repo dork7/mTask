@@ -12,6 +12,7 @@ import {
   dubaiDayStart,
 } from '../dubai.ts';
 import { slots, type Priority, type Slot } from '../ui.ts';
+import { taskPath } from './task-list.ts';
 
 /*
  * The timeline of one Dubai day: an hour axis from the working hours, widened to hold
@@ -70,6 +71,8 @@ export interface AxisBand {
 export interface TimelineBlock {
   id: number;
   title: string;
+  /** The task's sheet. */
+  href: string;
   /** The class `k-<tone>`: the priority, or `none`. */
   tone: Priority | 'none';
   urgent: boolean;
@@ -264,6 +267,7 @@ export function buildTimeline(
     return {
       id: task.id,
       title: task.title,
+      href: taskPath(task.id),
       tone: task.priority ?? 'none',
       urgent: task.priority === 'urgent',
       time: `${clockLabel(new Date(task.scheduled_start))}–${clockLabel(new Date(task.scheduled_end))}`,

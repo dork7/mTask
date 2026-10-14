@@ -1,0 +1,15 @@
+<%#
+  sheet: as pages/task-sheet.ejs. Start for a pending task, Done for one that is not
+  done, and Close back to the task's card. Each post is a form of its own.
+-%>
+<% if (sheet.startAction !== null) { -%>
+<form method="post" action="<%= sheet.startAction %>">
+  <%- include('button', { button: { label: 'Start', type: 'submit' } }) -%>
+</form>
+<% } -%>
+<% if (sheet.doneAction !== null) { -%>
+<form method="post" action="<%= sheet.doneAction %>">
+  <%- include('button', { button: { label: 'Done', type: 'submit', variant: sheet.startAction === null ? 'primary' : 'ghost' } }) -%>
+</form>
+<% } -%>
+<%- include('button', { button: { label: 'Close', variant: 'ghost', href: sheet.closeHref } }) -%>

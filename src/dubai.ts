@@ -68,3 +68,22 @@ export function dayOfDate(text: string): number | undefined {
 export function dateOfDay(day: number): string {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
 }
+
+/** An instant on the Dubai clock as a `datetime-local` value, `YYYY-MM-DDTHH:MM`: `2026-10-12T16:00:00.000Z` is `2026-10-12T20:00`. */
+export function dateTimeValue(at: Date): string {
+  return new Date(at.getTime() + DUBAI_OFFSET_MS).toISOString().slice(0, 16);
+}
+
+/**
+ * The instant a Dubai date and time written `YYYY-MM-DDTHH:MM` names, or `undefined`
+ * when the text is not in that form or names no real date and time.
+ */
+export function instantOfDateTime(text: string): Date | undefined {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(text);
+  if (match === null) return undefined;
+  const day = dayOfDate(match[1]);
+  const hours = Number(match[2]);
+  const minutes = Number(match[3]);
+  if (day === undefined || hours > 23 || minutes > 59) return undefined;
+  return new Date(dubaiDayStart(day) + (hours * 60 + minutes) * MINUTE_MS);
+}

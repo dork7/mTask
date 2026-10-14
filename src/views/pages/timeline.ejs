@@ -34,7 +34,7 @@
   <ol class="tl__blocks">
 <% for (const block of timeline.blocks) { -%>
     <li class="blk k-<%= block.tone %><% if (block.conflict) { %> conflict<% } %>" id="block-<%= block.id %>" style="<%= block.style %>">
-      <p class="blk__title"><% if (block.urgent) { %><span aria-hidden="true"><%= ui.priority('urgent').glyph %></span> <% } %><%= block.title %></p>
+      <p class="blk__title"><% if (block.urgent) { %><span aria-hidden="true"><%= ui.priority('urgent').glyph %></span> <% } %><a href="<%= block.href %>"><%= block.title %></a></p>
       <p class="blk__meta"><%= block.time %><% if (block.status !== null) { %> · <%= block.status %><% } %><% if (block.conflict) { %> <span class="visually-hidden">Conflict</span><span aria-hidden="true">⚠</span><% } %></p>
     </li>
 <% } -%>
