@@ -4,6 +4,7 @@ import { inTransaction } from '../db/transaction.ts';
 import { instantOfDateTime } from '../dubai.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import { postedValue, readMinutes, type DraftProblems } from './drafts.ts';
+import type { TaskTimes } from './overdue.ts';
 import { placeTasks, storeSchedule } from './scheduler.ts';
 import { workedMinutes } from './timer.ts';
 
@@ -149,4 +150,9 @@ export function saveTaskEdit(db: Database, task: Task, edit: TaskEdit | SheetEdi
       saved.time_slot !== task.time_slot;
     if (changed) storeSchedule(db, placeTasks(db, [saved], now));
   });
+}
+
+/** Gives a task these times. Nothing else of it, and no other task, is written. */
+export function moveTask(db: Database, task: Task, times: TaskTimes): void {
+  updateTask(db, task.id, times);
 }

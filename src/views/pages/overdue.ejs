@@ -1,0 +1,54 @@
+<%#
+  The overdue view: the pending tasks whose end has passed, grouped by the Dubai day it
+  was in.
+  overdue: { groups, emptyHref }
+  `groups` are the groups that hold a task, in the order Today, Yesterday, Earlier, each
+  with its cards. A card says where its three forms post; `error` is the message of a
+  refused pick for that card, or null. With no group, the empty state links to `emptyHref`.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Overdue' } }) -%>
+
+<% if (overdue.groups.length === 0) { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'Nothing overdue',
+  text: 'Every task whose time has passed is done or has a new time.',
+  actions: include('../partials/button', { button: { label: 'See all tasks', href: overdue.emptyHref } }),
+} }) -%>
+<% } -%>
+<% for (const group of overdue.groups) { -%>
+<div class="overdue-group">
+  <h2 id="overdue-<%= group.id %>"><%= group.label %></h2>
+  <ol class="task-list" aria-labelledby="overdue-<%= group.id %>">
+<% for (const card of group.cards) { -%>
+    <li class="card task" id="task-<%= card.id %>">
+      <h3 class="task__title"><%= card.title %></h3>
+      <p class="task__meta">
+        <span class="task__minutes"><%= card.minutes %></span>
+<% if (card.priority !== null) { -%>
+        <%- include('../partials/priority-badge', { priorityBadge: { priority: card.priority } }) -%>
+<% } -%>
+        <span class="task__due"><%= card.due %></span>
+      </p>
+      <div class="task__actions">
+        <form method="post" action="<%= card.doneAction %>">
+          <%- include('../partials/button', { button: { label: 'Mark done', type: 'submit' } }) -%>
+        </form>
+        <form method="post" action="<%= card.rescheduleAction %>">
+          <%- include('../partials/button', { button: { label: 'Reschedule', variant: 'ghost', type: 'submit' } }) -%>
+        </form>
+      </div>
+      <form class="pick-form" method="post" action="<%= card.pickAction %>">
+        <label for="pick-<%= card.id %>">Pick a time</label>
+        <input class="field" id="pick-<%= card.id %>" type="datetime-local" name="start" required<% if (card.error !== null) { %> aria-invalid="true" aria-describedby="pick-<%= card.id %>-error"<% } %>>
+        <%- include('../partials/button', { button: { label: 'Set time', variant: 'ghost', type: 'submit' } }) -%>
+      </form>
+<% if (card.error !== null) { -%>
+      <div class="notice notice--error" id="pick-<%= card.id %>-error" role="alert">
+        <p><%= card.error %></p>
+      </div>
+<% } -%>
+    </li>
+<% } -%>
+  </ol>
+</div>
+<% } -%>

@@ -52,7 +52,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 /** The task a path segment names when the list shows it, or `undefined`: no such id, a draft, or not written as an id. */
-function findListedTask(db: Database, raw: unknown): Task | undefined {
+export function findListedTask(db: Database, raw: unknown): Task | undefined {
   const id = readId(raw);
   const task = id === undefined ? undefined : getTask(db, id);
   return task !== undefined && isListed(task) ? task : undefined;
