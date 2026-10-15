@@ -13,12 +13,14 @@ import {
   draftField,
   hasProblems,
   listDrafts,
+  postedStrings,
   postedValue,
   readDraftEdits,
   removeDraft,
   type DraftFieldName,
   type DraftProblems,
 } from '../services/drafts.ts';
+import { daysOf, repeatOf, repeats, weekdays, type Repeat, type Weekday } from '../services/recurrence.ts';
 import { placeTasks } from '../services/scheduler.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import { answerAnalysis, reviewPath } from './add.ts';
@@ -26,6 +28,7 @@ import { answerAnalysis, reviewPath } from './add.ts';
 const NO_TITLE = 'Give every task a title.';
 const BAD_MINUTES = 'Set every duration to a whole number of minutes from 1 to 1440.';
 const BAD_CHOICE = 'Choose every priority and every slot from the ones offered.';
+const BAD_REPEAT = 'Choose every repeat from the ones offered.';
 
 /** What a card shows for a draft the scheduler cannot place. */
 const NOT_SCHEDULED = 'Not scheduled';
@@ -57,6 +60,8 @@ interface DraftCard {
   lowConfidence: boolean;
   /** Where the stored draft would land if it were confirmed now: `Today 8:00 PM`, or `Not scheduled`. */
   land: string;
+  repeat: Repeat;
+  days: Weekday[];
   fields: Record<DraftFieldName, string>;
   removeAction: string;
 }
@@ -73,6 +78,8 @@ function cardOf(sourceId: number, draft: Task, body: unknown, land: string): Dra
     minutes: draftField('minutes', draft.id),
     priority: draftField('priority', draft.id),
     slot: draftField('slot', draft.id),
+    repeat: draftField('repeat', draft.id),
+    'repeat-days': draftField('repeat-days', draft.id),
   };
   const postedPriority = postedValue(body, fields.priority);
   const postedSlot = postedValue(body, fields.slot);
@@ -87,6 +94,13 @@ function cardOf(sourceId: number, draft: Task, body: unknown, land: string): Dra
     slot: postedSlot === '' ? '' : (slots.find((item) => item.id === postedSlot)?.id ?? storedSlot),
     lowConfidence: draft.confidence !== null && draft.confidence < LOW_CONFIDENCE,
     land,
+    repeat: repeats.find((item) => item.id === postedValue(body, fields.repeat))?.id ?? repeatOf(draft.recurrence_rule),
+    days:
+      body === undefined
+        ? daysOf(draft.recurrence_rule)
+        : weekdays
+            .filter((item) => postedStrings(body, fields['repeat-days']).includes(item.id))
+            .map((item) => item.id),
     fields,
     removeAction: `${reviewPath(sourceId)}/remove/${draft.id}`,
   };
@@ -98,6 +112,7 @@ function messagesOf(problems: DraftProblems): string[] {
   if (problems.title) messages.push(NO_TITLE);
   if (problems.minutes) messages.push(BAD_MINUTES);
   if (problems.choice) messages.push(BAD_CHOICE);
+  if (problems.repeat) messages.push(BAD_REPEAT);
   return messages;
 }
 

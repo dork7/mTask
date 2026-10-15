@@ -51,6 +51,21 @@
     </label>
 <% } -%>
   </fieldset>
+  <label class="edit-form__label" for="sheet-repeat">Repeat</label>
+  <select class="field" id="sheet-repeat" name="repeat">
+<% for (const item of recurrence.repeats) { -%>
+    <option value="<%= item.id %>"<% if (sheet.form.repeat === item.id) { %> selected<% } %>><%= item.label %></option>
+<% } -%>
+  </select>
+  <fieldset class="choices">
+    <legend class="edit-form__label">Repeat days</legend>
+<% for (const day of recurrence.weekdays) { -%>
+    <label class="choice">
+      <input type="checkbox" name="repeat-days" value="<%= day.id %>"<% if (sheet.form.days.includes(day.id)) { %> checked<% } %>>
+      <span><%= day.label %></span>
+    </label>
+<% } -%>
+  </fieldset>
   <label class="edit-form__label" for="sheet-category">Category</label>
   <input class="field" id="sheet-category" type="text" name="category" value="<%= sheet.form.category %>">
   <label class="edit-form__label" for="sheet-description">Description</label>

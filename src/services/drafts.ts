@@ -6,6 +6,7 @@ import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import type { Analysis, Analyze, AnalyzerInput } from './analyzer.ts';
 import { readCorrections } from './corrections.ts';
 import { photoFile } from './photo-storage.ts';
+import { repeatRule } from './recurrence.ts';
 import { applyRules, readSlotRules } from './rules.ts';
 import { placeTasks, storeSchedule } from './scheduler.ts';
 
@@ -106,7 +107,7 @@ export function listDrafts(db: Database, sourceId: number): Task[] {
 }
 
 /** The fields of a draft the review form can change. */
-export type DraftFieldName = 'title' | 'minutes' | 'priority' | 'slot';
+export type DraftFieldName = 'title' | 'minutes' | 'priority' | 'slot' | 'repeat' | 'repeat-days';
 
 /** The name of a form field of the review page. The page and the reader both get it here. */
 export function draftField(name: DraftFieldName, taskId: number): string {
@@ -125,6 +126,17 @@ export function postedValue(body: unknown, name: string): string | null | undefi
   return typeof value === 'string' ? value : null;
 }
 
+/**
+ * The string values a posted form has for a field: one for a single value, each for a
+ * repeated one, and none when it was not posted. `body` is whatever the request carried.
+ */
+export function postedStrings(body: unknown, name: string): string[] {
+  if (typeof body !== 'object' || body === null || !Object.hasOwn(body, name)) return [];
+  const value: unknown = (body as Record<string, unknown>)[name];
+  if (typeof value === 'string') return [value];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
 /** What a posted form changes on one draft. A field that is left out keeps its stored value. */
 export interface DraftEdit {
   title?: string;
@@ -132,6 +144,8 @@ export interface DraftEdit {
   priority?: Priority;
   /** `null` is the form's `No slot`. */
   time_slot?: Slot | null;
+  /** The rule, or `null` for `Does not repeat`. */
+  recurrence_rule?: string | null;
 }
 
 /** What was wrong in a posted form, by kind: each is true when one field or more had it. */
@@ -142,6 +156,8 @@ export interface DraftProblems {
   minutes: boolean;
   /** A priority or a slot that is not one of `src/ui.ts`. */
   choice: boolean;
+  /** A repeat or a day box that is not one of the ones offered. */
+  repeat: boolean;
 }
 
 export interface DraftEdits {
@@ -158,7 +174,7 @@ export interface DraftEdits {
  */
 export function readDraftEdits(body: unknown, drafts: readonly Task[]): DraftEdits {
   const byTask = new Map<number, DraftEdit>();
-  const problems: DraftProblems = { title: false, minutes: false, choice: false };
+  const problems: DraftProblems = { title: false, minutes: false, choice: false, repeat: false };
 
   for (const draft of drafts) {
     const edit: DraftEdit = {};
@@ -191,6 +207,13 @@ export function readDraftEdits(body: unknown, drafts: readonly Task[]): DraftEdi
       else problems.choice = true;
     }
 
+    const repeat = postedValue(body, draftField('repeat', draft.id));
+    if (repeat !== undefined) {
+      const read = repeat === null ? undefined : repeatRule(repeat, postedStrings(body, draftField('repeat-days', draft.id)));
+      if (read !== undefined) edit.recurrence_rule = read;
+      else problems.repeat = true;
+    }
+
     byTask.set(draft.id, edit);
   }
 
@@ -199,7 +222,7 @@ export function readDraftEdits(body: unknown, drafts: readonly Task[]): DraftEdi
 
 /** Whether a posted form had anything wrong in it. */
 export function hasProblems(problems: DraftProblems): boolean {
-  return problems.title || problems.minutes || problems.choice;
+  return problems.title || problems.minutes || problems.choice || problems.repeat;
 }
 
 /**
