@@ -165,7 +165,7 @@ describe('the mini-bar (AC9)', () => {
 
     expect(all(document, '#mini-bar')).toEqual([]);
     expect(all(document, 'script[src="/js/timer.js"]')).toEqual([]);
-    if (address === '/') expect(all(document, 'script')).toHaveLength(1);
+    if (address === '/') expect(all(document, 'script')).toHaveLength(2);
   });
 
   it('shows the task started last, and the higher id on the same start', async () => {

@@ -162,20 +162,24 @@ describe('theme toggle (AC4)', () => {
 
   it('has its script inline in the head, before the stylesheet link', async () => {
     const { document } = await getPage('/');
-    const script = one(document, 'script');
+    const scripts = all(document, 'script');
+    const script = scripts.find((s) => s.textContent?.includes('data-theme'));
     const stylesheet = one(document, 'link[rel="stylesheet"]');
 
-    expect(document.head.contains(script)).toBe(true);
+    expect(script).toBeDefined();
+    expect(document.head.contains(script!)).toBe(true);
     for (const attribute of ['src', 'defer', 'async', 'type']) {
-      expect(script.hasAttribute(attribute), attribute).toBe(false);
+      expect(script!.hasAttribute(attribute), attribute).toBe(false);
     }
-    expect(script.compareDocumentPosition(stylesheet) & FOLLOWING).toBe(FOLLOWING);
-    expect(script.textContent).toContain('data-theme');
+    expect(script!.compareDocumentPosition(stylesheet) & FOLLOWING).toBe(FOLLOWING);
+    expect(script!.textContent).toContain('data-theme');
   });
 
   it('keeps out of the script the text that page-level checks search for', async () => {
     const { document } = await getPage('/');
-    const source = one(document, 'script').textContent ?? '';
+    const scripts = all(document, 'script');
+    const themeScript = scripts.find((s) => s.textContent?.includes('data-theme'));
+    const source = themeScript?.textContent ?? '';
 
     expect(source).not.toContain('<html');
     expect(source).not.toContain('<main');

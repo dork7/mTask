@@ -1,0 +1,15 @@
+{
+  "name": "Task Image AI",
+  "short_name": "Task Image AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef0f4",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
