@@ -4,6 +4,7 @@ import { createTask, deleteTask, listTasks, updateTask, type Task } from '../db/
 import { inTransaction } from '../db/transaction.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import type { Analysis, Analyze, AnalyzerInput } from './analyzer.ts';
+import { readCorrections } from './corrections.ts';
 import { photoFile } from './photo-storage.ts';
 import { applyRules, readSlotRules } from './rules.ts';
 import { placeTasks, storeSchedule } from './scheduler.ts';
@@ -50,6 +51,8 @@ function inputOf(uploadsDir: string, source: Source): AnalyzerInput | undefined 
  * rules of `rules.ts`, with the `slot_rules` setting as it is when the drafts are stored.
  * Nothing is stored when the analyzer rejects or returns its fallback (`'failed'`), or
  * finds no task (`'none'`). The source and its file are left as they are in every case.
+ * The analyzer is also handed the corrections of `readCorrections` as the database holds
+ * them at the call, and is called with the input alone when there are none.
  *
  * A source that already has a task gets no second set: the outcome is still `'drafts'`.
  * A database error is thrown, and no part of the list is stored then.
@@ -58,9 +61,11 @@ export async function analyzeSource(deps: DraftDeps, source: Source): Promise<An
   const input = inputOf(deps.uploadsDir, source);
   if (input === undefined) return 'failed';
 
+  const corrections = readCorrections(deps.db);
+
   let analysis: Analysis;
   try {
-    analysis = await deps.analyze(input);
+    analysis = corrections.length > 0 ? await deps.analyze(input, corrections) : await deps.analyze(input);
   } catch (error) {
     // The page says only that it could not be analyzed; the reason goes here.
     console.error(`The analysis of source ${source.id} failed:`, error);
