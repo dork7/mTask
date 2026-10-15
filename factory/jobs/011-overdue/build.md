@@ -99,3 +99,47 @@ Nothing in the spec was skipped. There are two small differences from the plan:
 
 - **Step 3 check.** The plan says to run `yarn dev` on port 3000. Port 3000 was held by a process I did not start, so I ran the server on port 3011 against an in-memory database, as described above.
 - **AC2 order test.** The plan's three-task order test holds only one tie and no null start. The page test follows the plan. The unit test adds a fourth and fifth task: a second tie and a task without a start, which must sort last.
+
+## Round 1
+
+Commit `807f59e` merges `main` (`cac45ee`, which has 012-timeline and 013-timer-and-detail) into this branch. Built on Node 26.8.2 and yarn 1.22.22.
+
+My rules say not to merge. The human review asked for this merge in so many words, and it only merges `main` into this job's branch, so I did it. I did not push, rebase or touch `main`.
+
+| Finding | What I did | What I saw fail |
+| --- | --- | --- |
+| `factory/backlog.md` conflicts | Kept 011, 012 and 013 all ticked | n/a (no test covers it) |
+| `public/css/base.css` conflicts | Kept both blocks: 011's `.overdue-group` and `.pick-form` rules, then 012 and 013's timeline, sheet, timer and mini-bar rules, all before the style guide block. Against `main`, the merged file differs only by 011's 18 lines. The braces balance (168 open, 168 close). | n/a (no CSS test). I checked by hand that each block is present once. |
+| `src/app.ts` conflicts | Kept both imports in alphabetical order (`mini-bar`, then `overdue`). The mounts are the mini-bar middleware, then `tasks`, `overdue`, `timeline` and the style guide. | Without the overdue mount, 30 of the 35 tests in the overdue page and actions files fail. Without the timeline mount, 40 of the 44 timeline page tests fail. Without the mini-bar middleware, 16 of the 21 timer and mini-bar tests fail. |
+
+`src/services/task-actions.ts` and `src/routes/tasks.ts` merged by themselves. `moveTask` and the export of `findListedTask` are still there. 013's `markDone` now records `actual_minutes` only for an `in_progress` task, and the overdue routes act only on `pending` tasks, so AC5 is unchanged, and its tests still pass.
+
+### Test run
+
+```
+$ yarn build
+$ tsc --noEmit
+Done in 1.73s.
+
+$ env -u ANTHROPIC_API_KEY yarn test
+ Test Files  56 passed (56)
+      Tests  1809 passed (1809)
+Done in 3.48s.
+```
+
+`data/` held the same `app.db` (last modified Oct 14 17:38) and `uploads/` before and after the run.
+
+```
+VERIFICATION
+Build: PASS
+Tests: PASS   (1809 passed, 0 failed)
+Lint:  SKIPPED
+Diff:  PASS
+Verdict: READY
+```
+
+Against `main`, the diff is 011's job files, the `backlog.md` tick and the code files listed in the design. It has no `.only`, `.skip`, TODO, debug output or machine paths.
+
+### Not done in round 1
+
+- The overdue routes still read the clock with `new Date()`. They do not use the `requestTime(res)` that 013 added on `main`. The review asked only for the merge, and the tests pass either way. As a result, a rendered overdue page reads the clock twice: once in the mini-bar middleware and once in the route.
