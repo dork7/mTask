@@ -96,9 +96,8 @@ settings, and Dubai dates and times.
 
   After the next instance is deleted, neither a Done nor a later run makes another, so
   deleting the newest instance ends the series. Whether this is tracked through
-  `parent_task_id` plus a marker, or a new column added by an appended migration, is the
-  architect's choice. The next instance carries the rule, so it makes its own next
-  instance in turn.
+  `parent_task_id` plus a marker, without adding a migration, is the architect's choice.
+  The next instance carries the rule, so it makes its own next instance in turn.
 - **AC7**: Running the job. `src/services/recurrence.ts` also exports a starter that
   takes the database. It runs AC5 once at once, at the time it reads then, and again
   every 15 minutes. It returns a function that stops it. Whether it uses `node-cron` or a
@@ -152,8 +151,14 @@ settings, and Dubai dates and times.
   - the sheet picker shown, stored and refused (AC8, AC9);
   - the review picker confirmed and refused (AC10).
 
-  No existing assertion changes. A test helper, for example `formFields` of
-  `src/testing/dom.ts`, may be extended to skip unchecked checkboxes.
+  No existing assertion changes, except that the exact-shape assertions on the forms
+  gain the new fields with their default values, and that the card's slot select is
+  found by its name. These are `src/task-sheet.test.ts:161`, which gains `repeat: ''`,
+  `src/review-page.test.ts:432`, which gains `repeat-<id>: ''` for each draft, and
+  `src/review-page.test.ts:376` and `:393`, which find the select as
+  `select[name^="slot-"]`. No other existing assertion changes. A test helper, for
+  example `formFields` of `src/testing/dom.ts`, may be extended to skip unchecked
+  checkboxes.
 
 ## Out of scope
 
