@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> - <%= appName %></title>
   <%- include('partials/theme-script') -%>
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register("/sw.js");
+    }
+  </script>
   <link rel="stylesheet" href="/css/base.css">
 <% if (locals.miniBar) { -%>
   <script src="/js/timer.js" defer></script>
