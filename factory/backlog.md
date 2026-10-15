@@ -23,7 +23,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 013-timer-and-detail: task detail sheet, Start and Done, running timer
 - [x] 014-today-dashboard: Today page with Next up, progress and quick add
 - [x] 015-learning-loop: feed estimate corrections back into the analyzer
-- [ ] 016-recurring: daily, weekly and monthly recurring tasks
+- [x] 016-recurring: daily, weekly and monthly recurring tasks
 - [x] 017-pwa-shell: manifest, icons and offline app shell
 - [x] 018-reminders-and-alarm: urgent reminders with the in-page alarm
 - [x] 019-web-push: push notifications with the tab closed
