@@ -69,7 +69,9 @@ name below are this spec's choices.
   retry on the review page. A test uses an app built with a stub `analyze` that records
   its arguments. With one done `coding` task (estimated 30, actual 75) in the database, a
   text posted on `/add` reaches the stub with that one correction. With no such task, the
-  stub receives an empty list.
+  stub is called with the input as its only argument: no second argument at all, neither
+  `[]` nor `undefined`. This keeps the existing assertions of 006 and 007 on the stub's
+  argument list true, and by AC5 the analyzer treats a missing list like an empty one.
 - **AC7**: `yarn build` and `yarn test` pass with `ANTHROPIC_API_KEY` unset. Tests run
   against an in-memory or temporary database, leave nothing in `data/`, and make no
   network request. There are tests for:
@@ -78,7 +80,8 @@ name below are this spec's choices.
   - the per-category limit and order of AC3;
   - the lines in a text and an image request, and in the retry (AC4);
   - the unchanged request without corrections (AC5);
-  - the app passing the corrections (AC6).
+  - the app passing the corrections, and calling with the input only when there are
+    none (AC6).
 
   No existing test changes.
 
