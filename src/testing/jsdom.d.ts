@@ -88,6 +88,30 @@ declare module 'jsdom' {
     readonly message: string;
   }
 
+  /** What `fetch` answers. jsdom has no `fetch`; a test puts a stub on the window. */
+  export interface DomResponse {
+    json(): Promise<unknown>;
+  }
+
+  /** What a test's `fetch` stub is called with. */
+  export interface DomRequestInit {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }
+
+  /** One notification. */
+  export interface DomNotification {
+    readonly permission: string;
+  }
+
+  /** The Notifications API. jsdom has none; a test puts a stub on the window. */
+  export interface DomNotificationClass {
+    new (title: string): DomNotification;
+    permission: string;
+    requestPermission(): Promise<string> | undefined;
+  }
+
   export interface DomWindow {
     readonly document: DomDocument;
     readonly localStorage: DomStorage;
@@ -106,6 +130,12 @@ declare module 'jsdom' {
     /** The Web Speech API constructors. jsdom has neither; a test puts a stub here. */
     SpeechRecognition?: unknown;
     webkitSpeechRecognition?: unknown;
+    /** The page's `fetch`. jsdom has none; a test puts a stub here. */
+    fetch: (url: string, init?: DomRequestInit) => Promise<DomResponse>;
+    /** The Notifications API. jsdom has none; a test puts a stub here. */
+    Notification?: DomNotificationClass;
+    /** The media element class, for stubbing `play` and `pause`. */
+    HTMLMediaElement: { prototype: { play: () => unknown; pause: () => void } };
     /** The page's own `Date`. `stubClock` replaces `now`. */
     readonly Date: { now: () => number };
     /** The page's own `setInterval`. `stubClock` replaces it. */

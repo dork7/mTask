@@ -108,6 +108,7 @@ describe('the tasks table (AC2)', () => {
       'confidence',
       'created_at',
       'updated_at',
+      'reminded_at',
     ]);
   });
 
@@ -361,6 +362,7 @@ describe('timestamp columns (AC7)', () => {
     'started_at',
     'completed_at',
     'reminder_at',
+    'reminded_at',
     'created_at',
     'updated_at',
   ])("%s of a task takes a UTC ISO string and rejects SQLite's own datetime('now')", (column) => {

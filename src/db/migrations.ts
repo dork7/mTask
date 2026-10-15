@@ -76,6 +76,10 @@ INSERT INTO settings (key, value) VALUES ('working_hours', '{"start":"09:00","en
   `
 INSERT INTO settings (key, value) VALUES ('slot_rules', '[{"category":"coding","time_slot":"morning","start":"09:00","end":"11:00"},{"category":"shopping","time_slot":"night","start":"20:00","end":"22:00"}]');
 `,
+  // 3: when a reminder was fired, so the job does not fire it twice (018).
+  `
+ALTER TABLE tasks ADD COLUMN reminded_at TEXT CONSTRAINT tasks_reminded_at CHECK (reminded_at GLOB '????-??-??T??:??:??.???Z');
+`,
 ];
 
 /**
