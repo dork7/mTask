@@ -8,3 +8,4 @@ coverage
 factory/*.jsonl
 factory/board.json
 /data/
+/cache/
