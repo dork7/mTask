@@ -4,7 +4,7 @@ import type { Database } from './db/database.ts';
 import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
-import { homeRouter } from './routes/home.ts';
+import { createHomeRouter } from './routes/home.ts';
 import { createMiniBarMiddleware } from './routes/mini-bar.ts';
 import { createOverdueRouter } from './routes/overdue.ts';
 import { createReviewRouter } from './routes/review.ts';
@@ -61,7 +61,7 @@ export function createApp(deps: AppDeps): Express {
     }),
   );
   app.use(createMiniBarMiddleware(deps));
-  app.use(homeRouter);
+  app.use(createHomeRouter(deps));
   app.use(createAddRouter(deps));
   app.use(createReviewRouter(deps));
   app.use(createTasksRouter(deps));
