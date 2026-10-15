@@ -1181,6 +1181,197 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+/* Today: the task to do next, the day's progress, the way to the overdue view, the rest of the day, and quick add. */
+.next-up {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.next-up__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.next-up__when,
+.next-up__meta {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.next-up__title {
+  font-size: var(--font-size-lg);
+  overflow-wrap: anywhere;
+}
+
+.next-up__title a {
+  color: inherit;
+}
+
+.next-up__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.next-up__actions .btn {
+  flex: 1;
+}
+
+/*
+ * The bar's fill is as wide as the share of minutes done. The view writes that width as
+ * the SVG rect's own attribute: no page but the style guide carries an inline style.
+ */
+.progress {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.progress__percent {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.progress__minutes {
+  font-weight: 700;
+}
+
+.progress__tasks {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.progress__track {
+  display: block;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: var(--space-2);
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.progress__fill {
+  fill: var(--accent);
+}
+
+.overdue-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  background: var(--urgent-bg);
+  color: var(--urgent);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.later__heading {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.later__list {
+  padding: 0;
+  list-style: none;
+}
+
+.later__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.later__item:last-child {
+  border-bottom: 0;
+}
+
+.later__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.later__title {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.later__meta,
+.later__time {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.later__time {
+  white-space: nowrap;
+}
+
+/* A task's priority as a dot. The name is on the dot for screen readers; the color repeats it. */
+.dot {
+  flex: none;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: 50%;
+}
+
+.d-urgent {
+  background: var(--urgent);
+}
+
+.d-high {
+  background: var(--high);
+}
+
+.d-medium {
+  background: var(--medium);
+}
+
+.d-low {
+  background: var(--low);
+}
+
+.d-none {
+  background: var(--border);
+}
+
+.quick-add {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.quick-add__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-1);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.quick-add__glyph {
+  font-size: var(--font-size-lg);
+}
+
 /* ---------- Style guide ---------- */
 
 .sg-section {

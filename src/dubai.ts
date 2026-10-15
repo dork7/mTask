@@ -14,6 +14,9 @@ const DUBAI_OFFSET_MS = 4 * 60 * MINUTE_MS;
 
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
+/** The days of the week, in the order `getUTCDay` counts them. */
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
 /** The Dubai day an instant is in, as a whole number that grows by one at each Dubai midnight. */
 export function dubaiDay(at: number): number {
   return Math.floor((at + DUBAI_OFFSET_MS) / DAY_MS);
@@ -50,6 +53,12 @@ export function clockLabel(at: Date): string {
   const onClock = new Date(at.getTime() + DUBAI_OFFSET_MS);
   const hours = onClock.getUTCHours();
   return `${hours % 12 || 12}:${String(onClock.getUTCMinutes()).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+/** An instant's date on the Dubai clock, with its full weekday: `Monday, 12 Oct`. */
+export function weekdayDateLabel(at: Date): string {
+  const onClock = new Date(at.getTime() + DUBAI_OFFSET_MS);
+  return `${WEEKDAY_NAMES[onClock.getUTCDay()]}, ${onClock.getUTCDate()} ${MONTHS[onClock.getUTCMonth()]}`;
 }
 
 /**

@@ -1,2 +1,76 @@
-<h1>Today</h1>
-<p class="muted">No tasks yet.</p>
+<%#
+  The Today dashboard: what to do now.
+  today: { date, nextUp, emptyHref, progress, overdue, later, quickAdd }, built by
+  `buildToday` of src/services/today.ts. `nextUp` and `overdue` are null when there is
+  none; `later` may be empty. Rendered without `today`, as the layout tests of 002 do,
+  the page is its header alone.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Today', sub: locals.today ? today.date : undefined } }) -%>
+<% if (locals.today) { -%>
+
+<% if (today.nextUp !== null) { -%>
+<section class="card next-up" id="next-up" aria-labelledby="next-up-title">
+  <div class="next-up__head">
+    <p class="next-up__when"><%= today.nextUp.when %></p>
+<% if (today.nextUp.priority !== null) { -%>
+    <%- include('../partials/priority-badge', { priorityBadge: { priority: today.nextUp.priority } }) -%>
+<% } -%>
+  </div>
+  <h2 class="next-up__title" id="next-up-title"><a href="<%= today.nextUp.href %>"><%= today.nextUp.title %></a></h2>
+<% if (today.nextUp.meta !== '') { -%>
+  <p class="next-up__meta"><%= today.nextUp.meta %></p>
+<% } -%>
+  <form class="next-up__actions" method="post" action="<%= today.nextUp.startAction %>">
+    <%- include('../partials/button', { button: { label: 'Start', type: 'submit' } }) -%>
+  </form>
+</section>
+<% } else { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'Nothing up next',
+  text: 'No task is left to start today.',
+  actions: include('../partials/button', { button: { label: 'Add a task', href: today.emptyHref } }),
+} }) -%>
+<% } -%>
+
+<div class="card progress" id="progress" role="progressbar" aria-label="Today's progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= today.progress.percent %>">
+  <p class="progress__percent"><%= today.progress.percent %>%</p>
+  <div class="progress__text">
+    <p class="progress__minutes"><%= today.progress.minutesText %></p>
+    <p class="progress__tasks"><%= today.progress.tasksText %></p>
+  </div>
+  <svg class="progress__track" aria-hidden="true" focusable="false"><rect class="progress__fill" width="<%= today.progress.percent %>%" height="100%"></rect></svg>
+</div>
+
+<% if (today.overdue !== null) { -%>
+<a class="overdue-banner" id="overdue-banner" href="<%= today.overdue.href %>">
+  <span><%= today.overdue.text %></span>
+  <span>Review <span aria-hidden="true">→</span></span>
+</a>
+<% } -%>
+
+<% if (today.later.length > 0) { -%>
+<section class="later" aria-labelledby="later-heading">
+  <h2 class="later__heading" id="later-heading">Later today</h2>
+  <ol class="later__list">
+<% for (const item of today.later) { -%>
+    <li class="later__item" id="later-<%= item.id %>">
+      <span class="dot d-<%= item.tone %>"<% if (item.priorityLabel !== null) { %> role="img" aria-label="<%= item.priorityLabel %>"<% } else { %> aria-hidden="true"<% } %>></span>
+      <div class="later__text">
+        <a class="later__title" href="<%= item.href %>"><%= item.title %></a>
+<% if (item.meta !== '') { -%>
+        <p class="later__meta"><%= item.meta %></p>
+<% } -%>
+      </div>
+      <span class="later__time"><%= item.time %></span>
+    </li>
+<% } -%>
+  </ol>
+</section>
+<% } -%>
+
+<div class="quick-add" id="quick-add" role="group" aria-label="Quick add">
+<% for (const link of today.quickAdd) { -%>
+  <a class="quick-add__link" href="<%= link.href %>"><span class="quick-add__glyph" aria-hidden="true"><%= link.glyph %></span><span><%= link.label %></span></a>
+<% } -%>
+</div>
+<% } -%>
