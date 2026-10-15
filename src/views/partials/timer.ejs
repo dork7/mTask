@@ -1,0 +1,9 @@
+<%#
+  timer: { startedAt, text }
+  The time elapsed since `startedAt`, as the server wrote it. `/js/timer.js` keeps it
+  running.
+-%>
+<%
+  if (typeof timer.startedAt !== 'string' || timer.startedAt === '') throw new Error('timer: startedAt is required');
+-%>
+<span class="timer" role="timer" data-started-at="<%= timer.startedAt %>"><%= timer.text %></span>

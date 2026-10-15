@@ -7,12 +7,12 @@
 
 export const MINUTE_MS = 60_000;
 
-const DAY_MS = 24 * 60 * MINUTE_MS;
+export const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** How far the Dubai clock is ahead of UTC. */
 const DUBAI_OFFSET_MS = 4 * 60 * MINUTE_MS;
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 /** The Dubai day an instant is in, as a whole number that grows by one at each Dubai midnight. */
 export function dubaiDay(at: number): number {
@@ -37,11 +37,53 @@ export function clockMinutes(time: string): number {
  */
 export function dayTimeLabel(at: Date, now: Date): string {
   const onClock = new Date(at.getTime() + DUBAI_OFFSET_MS);
-  const hours = onClock.getUTCHours();
-  const time = `${hours % 12 || 12}:${String(onClock.getUTCMinutes()).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+  const time = clockLabel(at);
 
   const days = dubaiDay(at.getTime()) - dubaiDay(now.getTime());
   if (days === 0) return `Today ${time}`;
   if (days === 1) return `Tomorrow ${time}`;
   return `${onClock.getUTCDate()} ${MONTHS[onClock.getUTCMonth()]} ${time}`;
+}
+
+/** An instant's time of day on the Dubai clock, as a person reads it: `9:00 AM`, `12:30 PM`. */
+export function clockLabel(at: Date): string {
+  const onClock = new Date(at.getTime() + DUBAI_OFFSET_MS);
+  const hours = onClock.getUTCHours();
+  return `${hours % 12 || 12}:${String(onClock.getUTCMinutes()).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+/**
+ * The Dubai day a calendar date names, written `YYYY-MM-DD`, or `undefined` when the
+ * text is not in that form or names no real date (`2026-02-30`, `2026-13-01`).
+ */
+export function dayOfDate(text: string): number | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return undefined;
+  const at = Date.parse(`${text}T00:00:00.000Z`);
+  // Date.parse rolls a day past the month's end into the next month, so the text must come back unchanged.
+  if (Number.isNaN(at) || new Date(at).toISOString().slice(0, 10) !== text) return undefined;
+  return at / DAY_MS;
+}
+
+/** The calendar date of a Dubai day, as `YYYY-MM-DD`. */
+export function dateOfDay(day: number): string {
+  return new Date(day * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** An instant on the Dubai clock as a `datetime-local` value, `YYYY-MM-DDTHH:MM`: `2026-10-12T16:00:00.000Z` is `2026-10-12T20:00`. */
+export function dateTimeValue(at: Date): string {
+  return new Date(at.getTime() + DUBAI_OFFSET_MS).toISOString().slice(0, 16);
+}
+
+/**
+ * The instant a Dubai date and time written `YYYY-MM-DDTHH:MM` names, or `undefined`
+ * when the text is not in that form or names no real date and time.
+ */
+export function instantOfDateTime(text: string): Date | undefined {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(text);
+  if (match === null) return undefined;
+  const day = dayOfDate(match[1]);
+  const hours = Number(match[2]);
+  const minutes = Number(match[3]);
+  if (day === undefined || hours > 23 || minutes > 59) return undefined;
+  return new Date(dubaiDayStart(day) + (hours * 60 + minutes) * MINUTE_MS);
 }

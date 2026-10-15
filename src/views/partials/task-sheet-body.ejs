@@ -1,0 +1,63 @@
+<%#
+  sheet: as pages/task-sheet.ejs. The state of the task, its timer while it is in
+  progress, what it took once done, then its edit form. `started`, `timer`,
+  `completed` and `summary` are null when they are not shown. `form.slot` is '' for
+  No slot.
+-%>
+<p class="task-sheet__status"><%= sheet.status %></p>
+<% if (sheet.started !== null) { -%>
+<p class="task-sheet__started"><%= sheet.started %></p>
+<% } -%>
+<% if (sheet.timer !== null) { -%>
+<p class="task-sheet__timer"><%- include('timer', { timer: sheet.timer }) -%></p>
+<% } -%>
+<% if (sheet.completed !== null) { -%>
+<p class="task-sheet__completed"><%= sheet.completed %></p>
+<% } -%>
+<% if (sheet.summary !== null) { -%>
+<p class="task-sheet__summary"><%= sheet.summary %></p>
+<% } -%>
+<% if (sheet.errors.length > 0) { -%>
+<div class="notice notice--error" role="alert">
+<% for (const message of sheet.errors) { -%>
+  <p><%= message %></p>
+<% } -%>
+</div>
+<% } -%>
+<form class="edit-form" method="post" action="<%= sheet.form.action %>">
+  <label class="edit-form__label" for="sheet-title">Title</label>
+  <input class="field" id="sheet-title" type="text" name="title" value="<%= sheet.form.title %>" required>
+  <label class="edit-form__label" for="sheet-minutes">Minutes</label>
+  <input class="field" id="sheet-minutes" type="number" name="minutes" value="<%= sheet.form.minutes %>" min="1" max="1440" required>
+  <fieldset class="choices">
+    <legend class="edit-form__label">Priority</legend>
+<% for (const item of ui.priorities) { -%>
+    <label class="choice">
+      <input type="radio" name="priority" value="<%= item.id %>"<% if (sheet.form.priority === item.id) { %> checked<% } %>>
+      <span><span aria-hidden="true"><%= item.glyph %></span> <%= item.label %></span>
+    </label>
+<% } -%>
+  </fieldset>
+  <fieldset class="choices">
+    <legend class="edit-form__label">Time slot</legend>
+    <label class="choice">
+      <input type="radio" name="slot" value=""<% if (sheet.form.slot === '') { %> checked<% } %>>
+      <span>No slot</span>
+    </label>
+<% for (const item of ui.slots) { -%>
+    <label class="choice">
+      <input type="radio" name="slot" value="<%= item.id %>"<% if (sheet.form.slot === item.id) { %> checked<% } %>>
+      <span><%= item.label %></span>
+    </label>
+<% } -%>
+  </fieldset>
+  <label class="edit-form__label" for="sheet-category">Category</label>
+  <input class="field" id="sheet-category" type="text" name="category" value="<%= sheet.form.category %>">
+  <label class="edit-form__label" for="sheet-description">Description</label>
+  <textarea class="field task-sheet__description" id="sheet-description" name="description" rows="3"><%= sheet.form.description %></textarea>
+  <label class="edit-form__label" for="sheet-reminder">Reminder</label>
+  <input class="field" id="sheet-reminder" type="datetime-local" name="reminder" value="<%= sheet.form.reminder %>">
+  <div class="edit-form__actions">
+    <%- include('button', { button: { label: 'Save', type: 'submit' } }) -%>
+  </div>
+</form>

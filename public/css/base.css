@@ -996,6 +996,191 @@ h2 {
   width: auto;
 }
 
+/* Timeline: a day switcher, then one Dubai day on an hour axis. The route writes every position in percent of the axis. */
+.day-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.day-switcher__day {
+  text-align: center;
+}
+
+/* The axis. The hour labels sit in its left margin; the slot bands span its width, behind the blocks. */
+.tl {
+  position: relative;
+  margin-left: var(--space-12);
+}
+
+.band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.band[data-slot="morning"] {
+  background: var(--slot-morning);
+}
+
+.band[data-slot="afternoon"] {
+  background: var(--slot-afternoon);
+}
+
+.band[data-slot="evening"] {
+  background: var(--slot-evening);
+}
+
+.band[data-slot="night"] {
+  background: var(--slot-night);
+}
+
+.hour {
+  position: absolute;
+  left: calc(var(--space-12) * -1);
+  width: var(--space-10);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  text-align: right;
+  transform: translateY(-50%);
+}
+
+/* The area the blocks lie in, right of the band labels. A block's left and width are percent of it. */
+.tl__blocks {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 5.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.blk {
+  position: absolute;
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  color: var(--text);
+  border: 1px solid;
+  border-left-width: var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+}
+
+.blk__title {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* A block's priority: its tint, and its color on the border. These come after .blk, whose border they color. */
+.k-urgent {
+  background: var(--urgent-bg);
+  border-color: var(--urgent);
+}
+
+.k-high {
+  background: var(--high-bg);
+  border-color: var(--high);
+}
+
+.k-medium {
+  background: var(--medium-bg);
+  border-color: var(--medium);
+}
+
+.k-low {
+  background: var(--low-bg);
+  border-color: var(--low);
+}
+
+.k-none {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+/* Blocks that share time are hatched. This comes after the priority rules, whose background would reset it. */
+.conflict {
+  background-image: repeating-linear-gradient(135deg, var(--urgent-bg) 0 var(--space-1), var(--surface) var(--space-1) var(--space-2));
+}
+
+.now {
+  position: absolute;
+  left: calc(var(--space-2) * -1);
+  right: 0;
+  height: 2px;
+  background: var(--urgent);
+}
+
+/* The ways to a task's sheet: its title on a card, and a block of the timeline, whose link covers the block. */
+.task__title a,
+.blk__title a {
+  color: inherit;
+}
+
+.blk__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* The detail sheet of a task: its state, its timer, what it took, then its edit form. */
+.task-sheet__status,
+.task-sheet__started,
+.task-sheet__completed {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.task-sheet__timer {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+}
+
+.task-sheet__summary {
+  font-weight: 700;
+}
+
+.task-sheet__description {
+  resize: vertical;
+}
+
+/* A running timer: its digits keep their width as they change. */
+.timer {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The task in progress, on every page: it sits on the tab bar, and at the bottom on wide screens. */
+.mini-bar {
+  position: sticky;
+  bottom: var(--nav-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+.mini-bar__title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Style guide ---------- */
 
 .sg-section {
@@ -1128,6 +1313,10 @@ h2 {
   }
 
   .review-bar {
+    bottom: 0;
+  }
+
+  .mini-bar {
     bottom: 0;
   }
 }

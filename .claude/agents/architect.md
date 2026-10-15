@@ -26,6 +26,10 @@ under `$TMPDIR`. Say in `design.md` what you ran and on which Node and yarn vers
 and mark those claims as checked. Never install into the repo, never edit a file in it
 except your two, and delete the throwaway copy when you are done.
 
+Try only the specific calls you are unsure of, each in a few lines. Never build the
+design as a prototype, never run the project's build or test commands, and never break
+code to see a test fail: building and proving the tests is the builder's job.
+
 ## Write
 
 `<job>/design.md`:

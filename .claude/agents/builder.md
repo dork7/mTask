@@ -16,8 +16,9 @@ You build one factory job. You are given a job id. `<job>` is `factory/jobs/<job
 3. Work through the plan's steps in order, running each step's check before the next.
    Implement the spec and nothing more, in the style of the code around your change.
 4. Write the tests the plan lists, so every acceptance criterion has at least one. For
-   each test, break the behaviour it covers, see the test fail, and restore the file.
-   A test that still passes with the behaviour broken is not done.
+   each acceptance criterion, break its behaviour once, see at least one of its tests
+   fail, and restore the file. A criterion whose tests still pass with the behaviour
+   broken is not done.
 5. Run the verification loop below until it reports READY.
 6. Commit the code and tests: `<job-id>: <what was built, in one line>`.
 7. Write `<job>/build.md` and commit it on its own: `factory: <job-id> build report`.
@@ -34,7 +35,8 @@ Created and Changed: a table of file → why, with the decision number.
 
 ## Acceptance criteria
 | Criterion | Test | Fails when | Result |
-One row per clause of each criterion. "Fails when" is what you broke to see it fail.
+One row per criterion. "Fails when" is the one break you made for it and the test that
+failed.
 Then anything you checked by hand, with what you saw.
 
 ## Test run

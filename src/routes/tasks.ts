@@ -2,28 +2,41 @@ import express, { Router, type Response } from 'express';
 import type { AppDeps } from '../app.ts';
 import type { Database } from '../db/database.ts';
 import { deleteTask, getTask, listTasks, type Task, type TaskStatus } from '../db/tasks.ts';
-import { dayTimeLabel } from '../dubai.ts';
+import { dateTimeValue, dayTimeLabel } from '../dubai.ts';
 import { renderPage } from '../render.ts';
 import { postedValue, type DraftProblems } from '../services/drafts.ts';
-import { markDone, readTaskEdit, rescheduleTask, saveTaskEdit } from '../services/task-actions.ts';
+import {
+  markDone,
+  readSheetEdit,
+  readTaskEdit,
+  rescheduleTask,
+  saveTaskEdit,
+  startTask,
+  type SheetProblems,
+} from '../services/task-actions.ts';
 import {
   LIST_PATH,
   isListed,
   queryPairs,
   readListQuery,
+  sheetDoneAction,
   shownTasks,
   sortOptions,
+  taskPath,
   togglePriority,
   toggleSlot,
   withQuery,
   type ListQuery,
 } from '../services/task-list.ts';
+import { timerOf, type TaskTimer } from '../services/timer.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
+import { requestTime } from './mini-bar.ts';
 import { readId } from './review.ts';
 
 const NO_TITLE = 'Give the task a title.';
 const BAD_MINUTES = 'Set the duration to a whole number of minutes from 1 to 1440.';
 const BAD_CHOICE = 'Choose a priority and a slot from the ones offered.';
+const BAD_REMINDER = 'Set the reminder as a date and time, or leave it empty.';
 
 /** What a card shows for a task without a start, without a slot, and without minutes. */
 const NOT_SCHEDULED = 'Not scheduled';
@@ -37,11 +50,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: 'In progress',
   done: 'Done',
 };
-
-/** The address of one task, which its actions hang under. */
-function taskPath(id: number): string {
-  return `${LIST_PATH}/${id}`;
-}
 
 /** The task a path segment names when the list shows it, or `undefined`: no such id, a draft, or not written as an id. */
 export function findListedTask(db: Database, raw: unknown): Task | undefined {
@@ -64,6 +72,7 @@ interface ChipLink {
 interface TaskCard {
   id: number;
   title: string;
+  href: string;
   /** `25 min`, or `No estimate`. */
   minutes: string;
   /** `null`: no badge. */
@@ -86,6 +95,7 @@ function cardOf(task: Task, list: ListQuery, now: Date): TaskCard {
   return {
     id: task.id,
     title: task.title,
+    href: path,
     minutes: task.estimated_minutes === null ? NO_ESTIMATE : `${task.estimated_minutes} min`,
     priority: task.priority,
     slot: slots.find((item) => item.id === task.time_slot)?.label ?? NO_SLOT,
@@ -158,6 +168,18 @@ function messagesOf(problems: DraftProblems): string[] {
   return messages;
 }
 
+/** The four fields of the edit page as a form shows them: as posted where a value was posted, else as stored. */
+function shownEdit(task: Task, body: unknown): Pick<EditForm, 'title' | 'minutes' | 'priority' | 'slot'> {
+  const postedPriority = postedValue(body, 'priority');
+  const postedSlot = postedValue(body, 'slot');
+  return {
+    title: postedValue(body, 'title') ?? task.title,
+    minutes: postedValue(body, 'minutes') ?? (task.estimated_minutes === null ? '' : String(task.estimated_minutes)),
+    priority: priorities.find((item) => item.id === postedPriority)?.id ?? task.priority,
+    slot: postedSlot === '' ? '' : (slots.find((item) => item.id === postedSlot)?.id ?? task.time_slot ?? ''),
+  };
+}
+
 /**
  * Renders the edit page of a task. A value that was posted is shown in place of the
  * stored one: a title or minutes exactly as posted, a priority or a slot only when the
@@ -165,13 +187,8 @@ function messagesOf(problems: DraftProblems): string[] {
  */
 function renderEdit(res: Response, task: Task, status = 200, body: unknown = undefined, errors: string[] = []): void {
   const path = taskPath(task.id);
-  const postedPriority = postedValue(body, 'priority');
-  const postedSlot = postedValue(body, 'slot');
   const edit: EditForm = {
-    title: postedValue(body, 'title') ?? task.title,
-    minutes: postedValue(body, 'minutes') ?? (task.estimated_minutes === null ? '' : String(task.estimated_minutes)),
-    priority: priorities.find((item) => item.id === postedPriority)?.id ?? task.priority,
-    slot: postedSlot === '' ? '' : (slots.find((item) => item.id === postedSlot)?.id ?? task.time_slot ?? ''),
+    ...shownEdit(task, body),
     action: `${path}/edit`,
     deleteAction: `${path}/delete`,
     backHref: LIST_PATH,
@@ -180,11 +197,82 @@ function renderEdit(res: Response, task: Task, status = 200, body: unknown = und
   renderPage(res, 'task-edit', { title: 'Edit task', nav: 'tasks', edit, errors });
 }
 
+/** The sheet's edit form as `partials/task-sheet-body.ejs` shows it. */
+interface SheetForm extends Pick<EditForm, 'title' | 'minutes' | 'priority' | 'slot'> {
+  action: string;
+  category: string;
+  description: string;
+  /** `YYYY-MM-DDTHH:MM` on the Dubai clock, or as posted, or ''. */
+  reminder: string;
+}
+
+/** The detail sheet of a task as `pages/task-sheet.ejs` shows it. `null`: not shown. */
+interface TaskSheet {
+  status: string;
+  /** `Started Today 1:23 PM`. */
+  started: string | null;
+  timer: TaskTimer | null;
+  /** `Completed Today 1:36 PM`. */
+  completed: string | null;
+  /** `Estimated 30 min, actual 75 min`. */
+  summary: string | null;
+  startAction: string | null;
+  doneAction: string | null;
+  closeHref: string;
+  form: SheetForm;
+  errors: string[];
+}
+
+/** The messages of a refused sheet: those of the edit page, then the reminder's. */
+function sheetMessages(problems: SheetProblems): string[] {
+  const messages = messagesOf(problems);
+  if (problems.reminder) messages.push(BAD_REMINDER);
+  return messages;
+}
+
+/** What an optional field shows: the stored value on a GET; after a post, what was posted, or '' when it was missing or repeated. */
+function shownOptional(body: unknown, name: string, stored: string): string {
+  if (body === undefined) return stored;
+  const posted = postedValue(body, name);
+  return typeof posted === 'string' ? posted : '';
+}
+
+/** Renders the sheet of a task at `now`, with the values of a refused post when there is one. */
+function renderSheet(res: Response, task: Task, now: Date, status = 200, body: unknown = undefined, errors: string[] = []): void {
+  const path = taskPath(task.id);
+  const running = task.status === 'in_progress';
+  const done = task.status === 'done';
+  const sheet: TaskSheet = {
+    status: STATUS_LABELS[task.status],
+    started: running && task.started_at !== null ? `Started ${dayTimeLabel(new Date(task.started_at), now)}` : null,
+    timer: running ? timerOf(task, now) : null,
+    completed: done && task.completed_at !== null ? `Completed ${dayTimeLabel(new Date(task.completed_at), now)}` : null,
+    summary:
+      done && task.estimated_minutes !== null && task.actual_minutes !== null
+        ? `Estimated ${task.estimated_minutes} min, actual ${task.actual_minutes} min`
+        : null,
+    startAction: task.status === 'pending' ? `${path}/start` : null,
+    doneAction: done ? null : sheetDoneAction(task.id),
+    closeHref: `${LIST_PATH}#task-${task.id}`,
+    form: {
+      ...shownEdit(task, body),
+      action: path,
+      category: shownOptional(body, 'category', task.category ?? ''),
+      description: shownOptional(body, 'description', task.description ?? ''),
+      reminder: shownOptional(body, 'reminder', task.reminder_at === null ? '' : dateTimeValue(new Date(task.reminder_at))),
+    },
+    errors,
+  };
+  res.status(status);
+  renderPage(res, 'task-sheet', { title: task.title, nav: 'tasks', sheet });
+}
+
 /**
  * The task list and what it does to one task: the list, Done, Reschedule, the edit page
- * and its post, and Delete. An id that names no task, names a draft or is not written as
- * an id falls through to the app's not-found page. Every redirect goes to the list, with
- * the query of the request as the app writes it.
+ * and its post, Delete, and the task's sheet, its post and Start. An id that names no
+ * task, names a draft or is not written as an id falls through to the app's not-found
+ * page. The sheet's post, Start, and Done from the sheet go back to the sheet; every
+ * other redirect goes to the list, with the query of the request as the app writes it.
  */
 export function createTasksRouter(deps: AppDeps): Router {
   const router = Router();
@@ -201,8 +289,10 @@ export function createTasksRouter(deps: AppDeps): Router {
       next();
       return;
     }
-    markDone(deps.db, task, new Date());
-    res.redirect(303, `${withQuery(LIST_PATH, readListQuery(req.query))}#task-${task.id}`);
+    markDone(deps.db, task, requestTime(res));
+    const back =
+      req.query.from === 'sheet' ? taskPath(task.id) : `${withQuery(LIST_PATH, readListQuery(req.query))}#task-${task.id}`;
+    res.redirect(303, back);
   });
 
   router.post(`${LIST_PATH}/:taskId/reschedule`, (req, res, next) => {
@@ -247,6 +337,41 @@ export function createTasksRouter(deps: AppDeps): Router {
     }
     deleteTask(deps.db, task.id);
     res.redirect(303, withQuery(LIST_PATH, readListQuery(req.query)));
+  });
+
+  router.get(`${LIST_PATH}/:taskId`, (req, res, next) => {
+    const task = findListedTask(deps.db, req.params.taskId);
+    if (task === undefined) {
+      next();
+      return;
+    }
+    renderSheet(res, task, requestTime(res));
+  });
+
+  router.post(`${LIST_PATH}/:taskId`, form, (req, res, next) => {
+    const task = findListedTask(deps.db, req.params.taskId);
+    if (task === undefined) {
+      next();
+      return;
+    }
+    const now = requestTime(res);
+    const { edit, problems } = readSheetEdit(req.body);
+    if (edit === undefined) {
+      renderSheet(res, task, now, 400, req.body, sheetMessages(problems));
+      return;
+    }
+    saveTaskEdit(deps.db, task, edit, now);
+    res.redirect(303, taskPath(task.id));
+  });
+
+  router.post(`${LIST_PATH}/:taskId/start`, (req, res, next) => {
+    const task = findListedTask(deps.db, req.params.taskId);
+    if (task === undefined) {
+      next();
+      return;
+    }
+    startTask(deps.db, task, requestTime(res));
+    res.redirect(303, taskPath(task.id));
   });
 
   return router;

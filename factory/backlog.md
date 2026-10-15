@@ -19,8 +19,8 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 009-scheduler: auto-scheduler with gap filling, bumping and overflow
 - [x] 010-task-list: task list with filters, sort, edit and delete
 - [x] 011-overdue: overdue view with reschedule and mark done
-- [ ] 012-timeline: day timeline with slot bands, now line and conflicts
-- [ ] 013-timer-and-detail: task detail sheet, Start and Done, running timer
+- [x] 012-timeline: day timeline with slot bands, now line and conflicts
+- [x] 013-timer-and-detail: task detail sheet, Start and Done, running timer
 - [ ] 014-today-dashboard: Today page with Next up, progress and quick add
 - [ ] 015-learning-loop: feed estimate corrections back into the analyzer
 - [ ] 016-recurring: daily, weekly and monthly recurring tasks

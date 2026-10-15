@@ -284,3 +284,38 @@ export function visibleText(element: DomElement): string {
 export function textOf(element: DomElement): string {
   return (element.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
+
+/** A clock given to a page by `stubClock`. */
+export interface StubClock {
+  /** Moves the clock on by `ms`, running each interval of the page every time it falls due, in time order. */
+  advance(ms: number): void;
+}
+
+/**
+ * Gives a page a clock that stands still until the test moves it: `Date.now()` answers
+ * it and `setInterval` records its callbacks. Call it before the page's scripts run.
+ * `new Date()` in the page still reads the real clock.
+ */
+export function stubClock(window: DomWindow, at: number): StubClock {
+  let now = at;
+  const intervals: { run: () => void; every: number; next: number }[] = [];
+  window.Date.now = () => now;
+  window.setInterval = (run, every) => {
+    const step = Math.max(1, every);
+    intervals.push({ run, every: step, next: now + step });
+    return intervals.length;
+  };
+  return {
+    advance(ms) {
+      const end = now + ms;
+      for (;;) {
+        const due = intervals.filter((interval) => interval.next <= end).sort((a, b) => a.next - b.next)[0];
+        if (due === undefined) break;
+        now = due.next;
+        due.next += due.every;
+        due.run();
+      }
+      now = end;
+    },
+  };
+}
