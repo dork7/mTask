@@ -110,3 +110,58 @@ Nothing in the spec was skipped.
   `createTask` inserted, before `storeSchedule` writes the times, so a test that asserted
   times on the returned value saw null. The tests read the row back with `getTask`, and it
   is logged as `docs/errors/next-instance-returned-before-placement.md`.
+
+## Round 1
+
+Reviews: `round-1/review-code.md` PASS (no findings); `round-1/review-spec.md` CHANGES,
+three findings, each a clause that is true in the code but that no test protected. All
+three were fixed. Each fix is a test, so the module and the views are unchanged: this
+round's `git diff` touches only the three test files.
+
+| Finding | What I did | What I saw fail |
+| --- | --- | --- |
+| 1. `src/services/recurrence.ts:154` — AC2's "an instance with no start is dated the Dubai day it is completed" is untested. | Added `takes the day it is made for an instance with no start (AC2)` to `src/services/recurrence.test.ts`: a `FREQ=DAILY`, 30-minute, no-slot, no-start task made at `NOW`, whose next instance is `2026-10-13T05:00:00.000Z`–`05:30Z`. | `today` → `today + 1000` in `makeNextInstance`: "takes the day it is made for an instance with no start (AC2)" failed (1). |
+| 2. `task-sheet-body.ejs:54`, `review.ejs:73` — AC8's `Repeat` label and AC10's same controls are found by `name` only; the accessible name is untested. | `src/recurrence-sheet.test.ts` asserts `textOf(label[for="sheet-repeat"])` is `Repeat`; `src/recurrence-review.test.ts` asserts each card select's `aria-label` is `Repeat`. | The sheet label `Repeat` → `RepeatX`, and the review select's `aria-label="Repeat"` removed: "offers the four repeats…" (sheet) and "gives each card its picker…" (review) failed (2). |
+| 3. `src/services/recurrence.ts:189` — AC5's "one transaction each" is untested. | Added `handles each task in its own transaction, so one refusal leaves the others whole` to `src/services/recurrence.test.ts`: two due tasks, a trigger refuses the second task's own rule-clearing write after its next instance is inserted, the run throws, task 1 keeps its made instance with the rule cleared, task 2 has none and its rule stands. | Two breaks, both caught: the per-task `inTransaction` removed (bare), and one `inTransaction` around the whole loop: the new test failed each time (1). |
+
+Finding 3, note: I refused the second task's own rule-clearing write rather than its
+next-instance insert as the review suggested. Refusing the insert does not distinguish the
+clause: with or without the per-task `inTransaction`, SQLite autocommits task 1's writes
+and the second insert fails the same way, so the reviewer's own break (the per-task
+`inTransaction` removed) would still leave such a test green. Refusing a write that
+follows the insert makes the isolation observable — with one transaction per task the
+partial insert is rolled back, bare it stands, and one transaction around the whole run
+undoes task 1's instance as well. All three breaks were run and all three failed the new
+test.
+
+Round 1 test run.
+
+`yarn build`:
+
+```
+yarn run v1.22.22
+$ tsc --noEmit
+Done in 1.10s.
+```
+
+`ANTHROPIC_API_KEY= yarn test`:
+
+```
+ Test Files  66 passed (66)
+      Tests  1998 passed (1998)
+   Duration  3.60s (tests 61%, import 33%, transform 5%)
+```
+
+(1996 before this round: the two new tests, plus the two assertions added inside existing
+tests.)
+
+Verification report:
+
+```
+VERIFICATION
+Build: PASS
+Tests: PASS   (1998 passed, 0 failed)
+Lint:  SKIPPED
+Diff:  PASS
+Verdict: READY
+```
