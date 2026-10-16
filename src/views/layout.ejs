@@ -19,6 +19,10 @@
 <% if (locals.alarm) { -%>
   <script src="/js/alarm.js" defer></script>
 <% } -%>
+<% if (locals.vapidPublicKey) { -%>
+  <meta name="vapid-public-key" content="<%= vapidPublicKey %>">
+  <script src="/js/push.js" defer></script>
+<% } -%>
 </head>
 <body>
   <header class="site-header">

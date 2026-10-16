@@ -83,6 +83,26 @@ export function getAnthropicModel(env: NodeJS.ProcessEnv = process.env): string 
   return raw === '' ? DEFAULT_ANTHROPIC_MODEL : raw;
 }
 
+/** The three values the server signs Web Push with, as `VAPID_*` hold them. */
+export interface VapidKeys {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+}
+
+/**
+ * The VAPID keys of the environment: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and
+ * `VAPID_SUBJECT`, trimmed, when all three are non-blank; `undefined` when any is unset
+ * or blank. It never throws, so a server without the three starts and cannot push.
+ */
+export function getVapidKeys(env: NodeJS.ProcessEnv = process.env): VapidKeys | undefined {
+  const publicKey = env.VAPID_PUBLIC_KEY?.trim() ?? '';
+  const privateKey = env.VAPID_PRIVATE_KEY?.trim() ?? '';
+  const subject = env.VAPID_SUBJECT?.trim() ?? '';
+  if (publicKey === '' || privateKey === '' || subject === '') return undefined;
+  return { publicKey, privateKey, subject };
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }

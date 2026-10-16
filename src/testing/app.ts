@@ -24,6 +24,8 @@ export interface TestApp {
 export interface TestAppOptions {
   /** The analyzer the app calls. Left out, every analysis resolves to `oneTaskAnalysis()`. */
   analyze?: Analyze;
+  /** The VAPID public key the page subscribes with. Left out, the app has none. */
+  vapidPublicKey?: string | null;
 }
 
 /** What the default analyzer of a test app finds in anything: one task. A new object each call. */
@@ -53,7 +55,7 @@ export function createTestApp(options: TestAppOptions = {}): TestApp {
   const uploadsDir = path.join(dir, 'uploads');
   const db = openDatabase(':memory:');
   const analyze = options.analyze ?? (() => Promise.resolve(oneTaskAnalysis()));
-  const app = createApp({ db, uploadsDir, analyze });
+  const app = createApp({ db, uploadsDir, analyze, vapidPublicKey: options.vapidPublicKey });
 
   return {
     app,

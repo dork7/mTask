@@ -17,14 +17,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const listen = vi.fn();
 const loadEnv = vi.fn();
 
+/** The VAPID pair `web-push generate-vapid-keys` makes, checked against `web-push@3.6.7`. */
+const KEYS = {
+  publicKey: 'BHBjqXnNyMq3hDqYFob0fy-yoSWYlE8d2wXfWRx9qUgXY2L1oQ8_sHxKnUP3RVCWFjJmqHKU88i-EWyYulEtI2U',
+  privateKey: 'qCQ9VuEsy-NTlptIqrY-O8KMGIc7HPuXj-DH2pt-cR0',
+  subject: 'mailto:push@example.test',
+};
+
 /** Stands in for the open database. `server.ts` only hands it on. */
 const database = { name: 'the database openDatabase returned' };
 const openDatabase = vi.fn((_file: string) => database);
-const createApp = vi.fn((_deps: { db: unknown; uploadsDir: string; analyze: unknown }) => ({ listen }));
+const createApp = vi.fn(
+  (_deps: { db: unknown; uploadsDir: string; analyze: unknown; vapidPublicKey?: string | null }) => ({ listen }),
+);
 
 /** Stands in for the analyzer. `server.ts` only hands it on. */
 const analyze = vi.fn();
 const createAnalyze = vi.fn((_apiKey: string | undefined, _model: string) => analyze);
+
+/** Stands in for the VAPID keys of the environment. The real one is `src/config.ts`'s. */
+const getVapidKeys = vi.fn();
+
+/** Stand in for the two jobs; `server.ts` starts exactly one. */
+const startPushJob = vi.fn();
+const startReminderJob = vi.fn();
 
 async function startServer(): Promise<void> {
   await import('./server.ts');
@@ -35,16 +51,21 @@ beforeEach(() => {
   vi.doMock('./app.ts', () => ({ createApp }));
   vi.doMock('./db/database.ts', () => ({ openDatabase }));
   vi.doMock('./services/analyzer.ts', () => ({ createAnalyze }));
+  vi.doMock('./services/push.ts', () => ({ startPushJob }));
+  vi.doMock('./services/reminders.ts', () => ({ startReminderJob }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
-    return { ...actual, loadEnv };
+    return { ...actual, loadEnv, getVapidKeys };
   });
+  getVapidKeys.mockReturnValue(undefined);
 });
 
 afterEach(() => {
   vi.doUnmock('./app.ts');
   vi.doUnmock('./db/database.ts');
   vi.doUnmock('./services/analyzer.ts');
+  vi.doUnmock('./services/push.ts');
+  vi.doUnmock('./services/reminders.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -163,7 +184,7 @@ describe('server: the database and the uploads folder (AC11)', () => {
     await startServer();
 
     expect(createApp).toHaveBeenCalledTimes(1);
-    expect(createApp.mock.calls[0]).toStrictEqual([{ db: database, uploadsDir, analyze }]);
+    expect(createApp.mock.calls[0]).toStrictEqual([{ db: database, uploadsDir, analyze, vapidPublicKey: undefined }]);
     // The very object openDatabase returned, not a copy of it.
     expect(createApp.mock.calls[0][0].db).toBe(openDatabase.mock.results[0].value);
     expect(existsSync(uploadsDir)).toBe(false);
@@ -218,5 +239,34 @@ describe('server: without an Anthropic API key (005 AC10)', () => {
 
     expect(createApp).toHaveBeenCalledTimes(1);
     expect(listen).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('server: the reminder and push jobs (019 AC7)', () => {
+  it('starts the reminder job and not the push job when there are no VAPID keys', async () => {
+    vi.stubEnv('PORT', undefined);
+
+    await startServer();
+
+    expect(startReminderJob).toHaveBeenCalledTimes(1);
+    expect(startReminderJob.mock.calls[0]).toEqual([database]);
+    expect(startPushJob).not.toHaveBeenCalled();
+    expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startReminderJob.mock.invocationCallOrder[0]);
+    expect(startReminderJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+  });
+
+  it('starts the push job with the real sender and not the reminder job when the keys are there', async () => {
+    vi.stubEnv('PORT', undefined);
+    getVapidKeys.mockReturnValue(KEYS);
+
+    await startServer();
+
+    expect(startPushJob).toHaveBeenCalledTimes(1);
+    expect(startPushJob.mock.calls[0][0]).toBe(database);
+    expect(startPushJob.mock.calls[0][1]).toBeTypeOf('function');
+    expect(startReminderJob).not.toHaveBeenCalled();
+    expect(createApp.mock.calls[0][0]).toMatchObject({ vapidPublicKey: KEYS.publicKey });
+    expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startPushJob.mock.invocationCallOrder[0]);
+    expect(startPushJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
   });
 });
