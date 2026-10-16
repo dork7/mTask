@@ -26,7 +26,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [ ] 016-recurring: daily, weekly and monthly recurring tasks
 - [x] 017-pwa-shell: manifest, icons and offline app shell
 - [x] 018-reminders-and-alarm: urgent reminders with the in-page alarm
-- [ ] 019-web-push: push notifications with the tab closed
+- [x] 019-web-push: push notifications with the tab closed
 - [ ] 020-digest: morning digest page and push
 - [ ] 021-calendar-export: .ics downloads and the calendar feed
 - [ ] 022-settings: settings page
