@@ -221,6 +221,19 @@ describe('the next instance (AC3)', () => {
     });
   });
 
+  it('takes the day it is made for an instance with no start (AC2)', () => {
+    const instance = task({ recurrence_rule: 'FREQ=DAILY' });
+
+    const created = makeNextInstance(db, instance, NOW);
+    if (created === undefined) throw new Error('No next instance');
+
+    // 13 Oct only holds when the instance's date is the Dubai day of `now`.
+    expect(getTask(db, created.id)).toMatchObject({
+      scheduled_start: '2026-10-13T05:00:00.000Z',
+      scheduled_end: '2026-10-13T05:30:00.000Z',
+    });
+  });
+
   it('places a daily task done late at the next mark today', () => {
     const instance = task({
       recurrence_rule: 'FREQ=DAILY',
@@ -315,6 +328,27 @@ describe('the periodic run (AC5)', () => {
     expect(rows[4]).toEqual(before[4]);
     expect(rows[0].recurrence_rule).toBeNull();
     expect(rows[1].recurrence_rule).toBeNull();
+  });
+
+  it('handles each task in its own transaction, so one refusal leaves the others whole', () => {
+    groceries();
+    groceries({ title: 'Second' });
+    // Refuse the second task's own write, after its next instance is inserted, so a bare
+    // insert (or a single transaction around the whole run) is seen: each task must be
+    // made or rolled back on its own.
+    db.exec(
+      "CREATE TRIGGER refuse_clear BEFORE UPDATE ON tasks WHEN OLD.id = 2 BEGIN SELECT RAISE(ABORT, 'refused by the test'); END",
+    );
+
+    expect(() => runRecurrence(db, new Date('2026-10-12T18:00:00.000Z'))).toThrow('refused by the test');
+
+    const rows = listTasks(db);
+    // The first task's next instance was made and its rule cleared; the second's partial
+    // insert was rolled back, and its rule is untouched.
+    expect(rows.filter((row) => row.parent_task_id === 1)).toHaveLength(1);
+    expect(rows.find((row) => row.id === 1)?.recurrence_rule).toBeNull();
+    expect(rows.filter((row) => row.parent_task_id === 2)).toHaveLength(0);
+    expect(rows.find((row) => row.id === 2)?.recurrence_rule).toBe('FREQ=WEEKLY');
   });
 });
 

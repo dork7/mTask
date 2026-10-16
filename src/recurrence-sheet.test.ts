@@ -71,6 +71,7 @@ describe('the sheet picker is shown (AC8)', () => {
     const document = await sheet(1);
     const select = one(document, 'select[name="repeat"]');
 
+    expect(textOf(one(document, 'label[for="sheet-repeat"]'))).toBe('Repeat');
     expect(all(select, 'option').map((option) => [option.getAttribute('value'), textOf(option)])).toEqual([
       ['', 'Does not repeat'],
       ['daily', 'Daily'],

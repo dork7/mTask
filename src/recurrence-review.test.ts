@@ -92,6 +92,7 @@ describe("the review card's picker (AC10)", () => {
       const card = cardOf(document, draft.id);
       const select = one(card, `select[name="repeat-${draft.id}"]`);
 
+      expect(select.getAttribute('aria-label')).toBe('Repeat');
       expect(all(select, 'option').map((option) => [option.getAttribute('value'), textOf(option)])).toEqual([
         ['', 'Does not repeat'],
         ['daily', 'Daily'],
