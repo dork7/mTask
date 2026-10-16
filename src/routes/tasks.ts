@@ -5,6 +5,7 @@ import { deleteTask, getTask, listTasks, type Task, type TaskStatus } from '../d
 import { dateTimeValue, dayTimeLabel } from '../dubai.ts';
 import { renderPage } from '../render.ts';
 import { postedValue, type DraftProblems } from '../services/drafts.ts';
+import { dismissTask, readSnooze, snoozeTask } from '../services/reminders.ts';
 import {
   markDone,
   readSheetEdit,
@@ -269,10 +270,11 @@ function renderSheet(res: Response, task: Task, now: Date, status = 200, body: u
 
 /**
  * The task list and what it does to one task: the list, Done, Reschedule, the edit page
- * and its post, Delete, and the task's sheet, its post and Start. An id that names no
- * task, names a draft or is not written as an id falls through to the app's not-found
- * page. The sheet's post, Start, and Done from the sheet go back to the sheet; every
- * other redirect goes to the list, with the query of the request as the app writes it.
+ * and its post, Delete, Snooze and Dismiss, and the task's sheet, its post and Start. An
+ * id that names no task, names a draft or is not written as an id falls through to the
+ * app's not-found page. The sheet's post, Start, and Done from the sheet go back to the
+ * sheet; every other redirect goes to the list, with the query of the request as the app
+ * writes it.
  */
 export function createTasksRouter(deps: AppDeps): Router {
   const router = Router();
@@ -337,6 +339,31 @@ export function createTasksRouter(deps: AppDeps): Router {
     }
     deleteTask(deps.db, task.id);
     res.redirect(303, withQuery(LIST_PATH, readListQuery(req.query)));
+  });
+
+  router.post(`${LIST_PATH}/:taskId/snooze`, form, (req, res, next) => {
+    const task = findListedTask(deps.db, req.params.taskId);
+    if (task === undefined) {
+      next();
+      return;
+    }
+    const minutes = readSnooze(req.body);
+    if (minutes === undefined) {
+      res.sendStatus(400);
+      return;
+    }
+    snoozeTask(deps.db, task, minutes, requestTime(res));
+    res.redirect(303, '/');
+  });
+
+  router.post(`${LIST_PATH}/:taskId/dismiss`, (req, res, next) => {
+    const task = findListedTask(deps.db, req.params.taskId);
+    if (task === undefined) {
+      next();
+      return;
+    }
+    dismissTask(deps.db, task);
+    res.redirect(303, '/');
   });
 
   router.get(`${LIST_PATH}/:taskId`, (req, res, next) => {

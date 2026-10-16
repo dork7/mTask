@@ -1,0 +1,24 @@
+<%#
+  The alarm for an urgent reminder. Hidden until `/js/alarm.js` finds an alarm in
+  `GET /reminders`. The layout writes it once, on a page where a task carries a reminder
+  and is not done. `SOUND` is a short generated beep: 8 kHz, 8-bit unsigned mono PCM.
+-%>
+<%
+  const SOUND = 'data:audio/wav;base64,UklGRqQHAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YYAHAADIyMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4yMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMg4ODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4OMjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIODg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODjIyMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyDg4ODg4yMjIyMiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=';
+-%>
+<div class="overlay overlay--alarm" id="alarm" role="alertdialog" hidden>
+  <div class="alarm">
+    <p class="alarm__title"></p>
+    <audio class="alarm__sound" loop src="<%= SOUND %>"></audio>
+    <div class="alarm__actions">
+      <%- include('button', { button: { label: 'Snooze 5 min', attrs: { 'data-minutes': '5' } } }) -%>
+      <%- include('button', { button: { label: 'Snooze 10 min', attrs: { 'data-minutes': '10' } } }) -%>
+      <%- include('button', { button: { label: 'Snooze 15 min', attrs: { 'data-minutes': '15' } } }) -%>
+      <%- include('button', { button: { label: 'Dismiss', variant: 'ghost', attrs: { 'data-alarm-dismiss': '' } } }) -%>
+    </div>
+    <p class="alarm__permission" hidden>Allow alerts so urgent tasks can wake you
+      <%- include('button', { button: { label: 'Allow alerts', attrs: { 'data-alarm-permission': '' } } }) -%>
+    </p>
+    <p class="alarm__blocked" hidden>Alerts are blocked. Keep this page open so the alarm can sound.</p>
+  </div>
+</div>

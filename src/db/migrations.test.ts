@@ -64,8 +64,8 @@ describe('the migration that adds the slot rules (008 AC2)', () => {
     expect(createHash('sha256').update(migrations[0]).digest('hex')).toBe(MIGRATION_1_SHA256);
   });
 
-  it('is the second of two migrations', () => {
-    expect(migrations).toHaveLength(2);
+  it('is one of three migrations', () => {
+    expect(migrations).toHaveLength(3);
   });
 
   it('is not part of migration 1: a database with migration 1 only has no slot rules', () => {
@@ -85,7 +85,7 @@ describe('the migration that adds the slot rules (008 AC2)', () => {
 
     const db = open(file);
 
-    expect(userVersion(db)).toBe(2);
+    expect(userVersion(db)).toBe(3);
     expect(getSetting(db, 'slot_rules')).toStrictEqual(SEEDED);
     expect(getSetting(db, 'working_hours')).toStrictEqual({ start: '08:00', end: '20:00' });
     expect(getTask(db, task.id)).toStrictEqual(task);
@@ -102,7 +102,7 @@ describe('the migration that adds the slot rules (008 AC2)', () => {
     const second = open(file);
 
     expect(getSetting(second, 'slot_rules')).toStrictEqual(changed);
-    expect(userVersion(second)).toBe(2);
+    expect(userVersion(second)).toBe(3);
   });
 
   it('does not bring back rules that were emptied or deleted when the database is opened again', () => {

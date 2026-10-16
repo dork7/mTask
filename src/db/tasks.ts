@@ -175,8 +175,10 @@ function givenFields(input: TaskChanges): [keyof TaskFields, SQLInputValue][] {
 
 /**
  * The driver's row, which has no prototype, as a plain object. The table is STRICT, so
- * each column holds the type `Task` declares; the compiler cannot see that.
+ * each column holds the type `Task` declares; the compiler cannot see that. The
+ * reminder marker `reminded_at` is not a field of `Task` (018), so it is dropped here.
  */
 function toTask(row: Record<string, SQLOutputValue>): Task {
+  Reflect.deleteProperty(row, 'reminded_at');
   return { ...row } as unknown as Task;
 }

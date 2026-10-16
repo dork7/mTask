@@ -16,6 +16,9 @@
 <% if (locals.miniBar) { -%>
   <script src="/js/timer.js" defer></script>
 <% } -%>
+<% if (locals.alarm) { -%>
+  <script src="/js/alarm.js" defer></script>
+<% } -%>
 </head>
 <body>
   <header class="site-header">
@@ -28,6 +31,9 @@
   </main>
 <% if (locals.miniBar) { -%>
   <%- include('partials/mini-bar', { miniBar: locals.miniBar }) -%>
+<% } -%>
+<% if (locals.alarm) { -%>
+  <%- include('partials/alarm') -%>
 <% } -%>
 </body>
 </html>
