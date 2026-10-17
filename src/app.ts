@@ -15,6 +15,7 @@ import { createTasksRouter } from './routes/tasks.ts';
 import { createTimelineRouter } from './routes/timeline.ts';
 import type { Analyze } from './services/analyzer.ts';
 import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
+import { repeats, weekdays } from './services/recurrence.ts';
 import { ui } from './ui.ts';
 
 /** What the app is built from. `server.ts` supplies the real ones, tests their own. */
@@ -51,6 +52,7 @@ export function createApp(deps: AppDeps): Express {
   app.locals.appName = 'Task Image AI';
   app.locals.ui = ui;
   app.locals.vapidPublicKey = deps.vapidPublicKey ?? null;
+  app.locals.recurrence = { repeats, weekdays };
 
   app.use(express.static(publicDir));
   // Stored photos. The bytes of an upload are never inspected, so the browser is told

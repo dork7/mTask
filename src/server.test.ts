@@ -27,6 +27,7 @@ const KEYS = {
 /** Stands in for the open database. `server.ts` only hands it on. */
 const database = { name: 'the database openDatabase returned' };
 const openDatabase = vi.fn((_file: string) => database);
+const startRecurrence = vi.fn();
 const createApp = vi.fn(
   (_deps: { db: unknown; uploadsDir: string; analyze: unknown; vapidPublicKey?: string | null }) => ({ listen }),
 );
@@ -53,6 +54,7 @@ beforeEach(() => {
   vi.doMock('./services/analyzer.ts', () => ({ createAnalyze }));
   vi.doMock('./services/push.ts', () => ({ startPushJob }));
   vi.doMock('./services/reminders.ts', () => ({ startReminderJob }));
+  vi.doMock('./services/recurrence.ts', () => ({ startRecurrence }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
     return { ...actual, loadEnv, getVapidKeys };
@@ -66,6 +68,7 @@ afterEach(() => {
   vi.doUnmock('./services/analyzer.ts');
   vi.doUnmock('./services/push.ts');
   vi.doUnmock('./services/reminders.ts');
+  vi.doUnmock('./services/recurrence.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -268,5 +271,15 @@ describe('server: the reminder and push jobs (019 AC7)', () => {
     expect(createApp.mock.calls[0][0]).toMatchObject({ vapidPublicKey: KEYS.publicKey });
     expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startPushJob.mock.invocationCallOrder[0]);
     expect(startPushJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+  });
+});
+
+describe('server: the recurring job (016 AC7)', () => {
+  it('starts the recurring job once, on the database it opened, after it opens it', async () => {
+    await startServer();
+
+    expect(startRecurrence).toHaveBeenCalledTimes(1);
+    expect(startRecurrence.mock.calls[0][0]).toBe(database);
+    expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(startRecurrence.mock.invocationCallOrder[0]);
   });
 });
