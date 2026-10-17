@@ -11,7 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * stand-in, so the SDK is not loaded and no client is made, and with `loadEnv`
  * replaced by a spy, so a developer's own `.env` cannot change the result. `getPort`,
  * `getDatabasePath`, `getUploadsDir`, `getAnthropicApiKey` and `getAnthropicModel` stay
- * the real ones.
+ * the real ones. The reminder, push and digest jobs are replaced by spies, so none of
+ * them starts a timer.
  */
 
 const listen = vi.fn();
@@ -41,6 +42,8 @@ const getVapidKeys = vi.fn();
 /** Stand in for the two jobs; `server.ts` starts exactly one. */
 const startPushJob = vi.fn();
 const startReminderJob = vi.fn();
+/** Stands in for the daily digest job; `server.ts` starts it beside the push job. */
+const startDigestJob = vi.fn();
 
 async function startServer(): Promise<void> {
   await import('./server.ts');
@@ -53,6 +56,7 @@ beforeEach(() => {
   vi.doMock('./services/analyzer.ts', () => ({ createAnalyze }));
   vi.doMock('./services/push.ts', () => ({ startPushJob }));
   vi.doMock('./services/reminders.ts', () => ({ startReminderJob }));
+  vi.doMock('./services/digest.ts', () => ({ startDigestJob }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
     return { ...actual, loadEnv, getVapidKeys };
@@ -66,6 +70,7 @@ afterEach(() => {
   vi.doUnmock('./services/analyzer.ts');
   vi.doUnmock('./services/push.ts');
   vi.doUnmock('./services/reminders.ts');
+  vi.doUnmock('./services/digest.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -242,7 +247,7 @@ describe('server: without an Anthropic API key (005 AC10)', () => {
   });
 });
 
-describe('server: the reminder and push jobs (019 AC7)', () => {
+describe('server: the reminder, push and digest jobs (019 AC7, 020 AC10)', () => {
   it('starts the reminder job and not the push job when there are no VAPID keys', async () => {
     vi.stubEnv('PORT', undefined);
 
@@ -251,6 +256,7 @@ describe('server: the reminder and push jobs (019 AC7)', () => {
     expect(startReminderJob).toHaveBeenCalledTimes(1);
     expect(startReminderJob.mock.calls[0]).toEqual([database]);
     expect(startPushJob).not.toHaveBeenCalled();
+    expect(startDigestJob).not.toHaveBeenCalled();
     expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startReminderJob.mock.invocationCallOrder[0]);
     expect(startReminderJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
   });
@@ -264,9 +270,15 @@ describe('server: the reminder and push jobs (019 AC7)', () => {
     expect(startPushJob).toHaveBeenCalledTimes(1);
     expect(startPushJob.mock.calls[0][0]).toBe(database);
     expect(startPushJob.mock.calls[0][1]).toBeTypeOf('function');
+    expect(startDigestJob).toHaveBeenCalledTimes(1);
+    expect(startDigestJob.mock.calls[0][0]).toBe(database);
+    // The very sender the push job got, not a second one.
+    expect(startDigestJob.mock.calls[0][1]).toBe(startPushJob.mock.calls[0][1]);
+    expect(startDigestJob.mock.calls[0][1]).toBeTypeOf('function');
     expect(startReminderJob).not.toHaveBeenCalled();
     expect(createApp.mock.calls[0][0]).toMatchObject({ vapidPublicKey: KEYS.publicKey });
     expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startPushJob.mock.invocationCallOrder[0]);
-    expect(startPushJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+    expect(startPushJob.mock.invocationCallOrder[0]).toBeLessThan(startDigestJob.mock.invocationCallOrder[0]);
+    expect(startDigestJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
   });
 });

@@ -4,6 +4,7 @@ import type { Database } from './db/database.ts';
 import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
+import { createDigestRouter } from './routes/digest.ts';
 import { createHomeRouter } from './routes/home.ts';
 import { createMiniBarMiddleware } from './routes/mini-bar.ts';
 import { createOverdueRouter } from './routes/overdue.ts';
@@ -74,6 +75,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createRemindersRouter(deps));
   app.use(createOverdueRouter(deps));
   app.use(createTimelineRouter(deps));
+  app.use(createDigestRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {

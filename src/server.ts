@@ -12,6 +12,7 @@ import {
 } from './config.ts';
 import { openDatabase } from './db/database.ts';
 import { createAnalyze } from './services/analyzer.ts';
+import { startDigestJob } from './services/digest.ts';
 import { startPushJob, type PushSender } from './services/push.ts';
 import { startReminderJob } from './services/reminders.ts';
 
@@ -50,7 +51,9 @@ function createPushSender(keys: VapidKeys): PushSender {
 if (vapid === undefined) {
   startReminderJob(db);
 } else {
-  startPushJob(db, createPushSender(vapid));
+  const send = createPushSender(vapid);
+  startPushJob(db, send);
+  startDigestJob(db, send);
 }
 
 // Express 5 also calls this callback, with the error, when the server fails to
