@@ -10,7 +10,7 @@ import { migrate, migrations } from './migrations.ts';
 import { createSource, getSource } from './sources.ts';
 import { createTask, getTask } from './tasks.ts';
 
-const tables = ['settings', 'sources', 'tasks'];
+const tables = ['push_subscriptions', 'settings', 'sources', 'tasks'];
 
 let dir: string;
 let opened: Database[];

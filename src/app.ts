@@ -7,6 +7,7 @@ import { createAddRouter } from './routes/add.ts';
 import { createHomeRouter } from './routes/home.ts';
 import { createMiniBarMiddleware } from './routes/mini-bar.ts';
 import { createOverdueRouter } from './routes/overdue.ts';
+import { createPushRouter } from './routes/push.ts';
 import { createRemindersRouter } from './routes/reminders.ts';
 import { createReviewRouter } from './routes/review.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
@@ -24,6 +25,8 @@ export interface AppDeps {
   uploadsDir: string;
   /** Turns a stored photo or a transcript into tasks. The real one asks the Anthropic API; a test hands in a stub. */
   analyze: Analyze;
+  /** The VAPID public key the page subscribes with, or `null` when the server has none. */
+  vapidPublicKey?: string | null;
 }
 
 /**
@@ -47,6 +50,7 @@ export function createApp(deps: AppDeps): Express {
   app.set('views', viewsDir);
   app.locals.appName = 'Task Image AI';
   app.locals.ui = ui;
+  app.locals.vapidPublicKey = deps.vapidPublicKey ?? null;
 
   app.use(express.static(publicDir));
   // Stored photos. The bytes of an upload are never inspected, so the browser is told
@@ -66,6 +70,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createAddRouter(deps));
   app.use(createReviewRouter(deps));
   app.use(createTasksRouter(deps));
+  app.use(createPushRouter(deps));
   app.use(createRemindersRouter(deps));
   app.use(createOverdueRouter(deps));
   app.use(createTimelineRouter(deps));

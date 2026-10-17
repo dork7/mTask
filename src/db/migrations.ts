@@ -80,6 +80,17 @@ INSERT INTO settings (key, value) VALUES ('slot_rules', '[{"category":"coding","
   `
 ALTER TABLE tasks ADD COLUMN reminded_at TEXT CONSTRAINT tasks_reminded_at CHECK (reminded_at GLOB '????-??-??T??:??:??.???Z');
 `,
+  // 4: the push subscriptions an endpoint subscribes and unsubscribes through (019).
+  `
+CREATE TABLE push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  CONSTRAINT push_subscriptions_created_at CHECK (created_at GLOB '????-??-??T??:??:??.???Z')
+) STRICT;
+`,
 ];
 
 /**

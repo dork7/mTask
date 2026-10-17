@@ -112,6 +112,27 @@ declare module 'jsdom' {
     requestPermission(): Promise<string> | undefined;
   }
 
+  /** The Push API's subscription, as `public/js/push.js` reads it. */
+  export interface DomPushSubscription {
+    readonly endpoint: string;
+    toJSON(): { readonly endpoint: string; readonly keys: { readonly p256dh: string; readonly auth: string } };
+  }
+
+  /** The registration's push manager. jsdom has none; a test puts a stub here. */
+  export interface DomPushManager {
+    subscribe(options: { userVisibleOnly: boolean; applicationServerKey: string }): Promise<DomPushSubscription>;
+  }
+
+  /** A service worker registration, as the page's `ready` answers it. */
+  export interface DomServiceWorkerRegistration {
+    readonly pushManager: DomPushManager;
+  }
+
+  /** The Service Worker API's container. jsdom has none; a test puts a stub here. */
+  export interface DomServiceWorkerContainer {
+    readonly ready: Promise<DomServiceWorkerRegistration>;
+  }
+
   export interface DomWindow {
     readonly document: DomDocument;
     readonly localStorage: DomStorage;
@@ -134,6 +155,8 @@ declare module 'jsdom' {
     fetch: (url: string, init?: DomRequestInit) => Promise<DomResponse>;
     /** The Notifications API. jsdom has none; a test puts a stub here. */
     Notification?: DomNotificationClass;
+    /** The Service Worker API. jsdom has none; a test puts `serviceWorker` on it. */
+    readonly navigator: { serviceWorker?: DomServiceWorkerContainer };
     /** The media element class, for stubbing `play` and `pause`. */
     HTMLMediaElement: { prototype: { play: () => unknown; pause: () => void } };
     /** The page's own `Date`. `stubClock` replaces `now`. */
