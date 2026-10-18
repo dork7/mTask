@@ -30,7 +30,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 020-digest: morning digest page and push
 - [x] 021-calendar-export: .ics downloads and the calendar feed
 - [x] 022-settings: settings page
-- [ ] 023-hardening: error pages, rate limits, cleanup and accessibility
+- [x] 023-hardening: error pages, rate limits, cleanup and accessibility
 
 ## Decisions
 
