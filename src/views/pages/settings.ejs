@@ -1,0 +1,72 @@
+<%#
+  The settings page.
+  settingsPage: { workingHours: { start, end }, workingHoursAction, slotRules, feedUrl,
+  upcomingIcsHref, todayIcsHref }, built by the route of src/routes/settings.ts.
+  `slotRules` are { category, slotLabel, start, end }, in stored order, and may be empty.
+  The browser half is public/js/settings.js; the theme button is handled by the layout's
+  theme script.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Settings' } }) -%>
+
+<section class="card" aria-labelledby="settings-hours-heading">
+  <h2 id="settings-hours-heading">Working hours</h2>
+  <form class="settings-form" id="working-hours" method="post" action="<%= settingsPage.workingHoursAction %>">
+    <label class="settings-form__label" for="working-start">Start</label>
+    <input class="field" id="working-start" type="time" name="start" value="<%= settingsPage.workingHours.start %>" required>
+    <label class="settings-form__label" for="working-end">End</label>
+    <input class="field" id="working-end" type="time" name="end" value="<%= settingsPage.workingHours.end %>" required>
+    <%- include('../partials/button', { button: { label: 'Save', type: 'submit' } }) -%>
+  </form>
+</section>
+
+<section class="card" aria-labelledby="settings-rules-heading">
+  <h2 id="settings-rules-heading">Slot rules</h2>
+<% if (settingsPage.slotRules.length > 0) { -%>
+  <ul class="slot-rules" id="slot-rules">
+<% for (const rule of settingsPage.slotRules) { -%>
+    <li class="slot-rule">
+      <span class="slot-rule__category"><%= rule.category %></span>
+      <span class="slot-rule__slot"><%= rule.slotLabel %></span>
+      <span class="slot-rule__start"><%= rule.start %></span>
+      <span class="slot-rule__end"><%= rule.end %></span>
+    </li>
+<% } -%>
+  </ul>
+<% } else { -%>
+  <%- include('../partials/empty-state', { emptyState: { heading: 'No slot rules' } }) -%>
+<% } -%>
+</section>
+
+<section class="card" aria-labelledby="settings-appearance-heading">
+  <h2 id="settings-appearance-heading">Appearance</h2>
+  <%- include('../partials/button', { button: { label: 'Toggle theme', variant: 'ghost', attrs: { 'data-theme-toggle': '', id: 'settings-theme' } } }) -%>
+</section>
+
+<section class="card" aria-labelledby="settings-alerts-heading">
+  <h2 id="settings-alerts-heading">Alerts</h2>
+  <label class="settings-row"><input type="checkbox" id="alarm-sound" checked> <span>Alarm sound</span></label>
+  <p id="notification-status" role="status">Checking alerts...</p>
+  <div class="settings-row">
+    <%- include('../partials/button', { button: { label: 'Allow alerts', attrs: { id: 'notification-allow' } } }) -%>
+    <%- include('../partials/button', { button: { label: 'Turn off alerts', variant: 'ghost', attrs: { id: 'notification-off' } } }) -%>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="settings-calendar-heading">
+  <h2 id="settings-calendar-heading">Calendar</h2>
+  <div class="settings-row">
+    <input class="field" id="feed-url" type="text" readonly value="<%= settingsPage.feedUrl %>" aria-label="Calendar feed URL">
+    <%- include('../partials/button', { button: { label: 'Copy', variant: 'ghost', attrs: { id: 'feed-copy' } } }) -%>
+  </div>
+  <div class="settings-row">
+    <%- include('../partials/button', { button: { label: 'Download upcoming (.ics)', href: settingsPage.upcomingIcsHref, variant: 'ghost', attrs: { download: '' } } }) -%>
+    <%- include('../partials/button', { button: { label: 'Download today (.ics)', href: settingsPage.todayIcsHref, variant: 'ghost', attrs: { download: '' } } }) -%>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="settings-app-heading">
+  <h2 id="settings-app-heading">App</h2>
+  <%- include('../partials/button', { button: { label: 'Install app', attrs: { id: 'install-app', hidden: '' } } }) -%>
+</section>
+
+<script src="/js/settings.js" defer></script>

@@ -33,7 +33,7 @@ describe('navigation items (AC3)', () => {
       ['timeline', '/timeline', 'Timeline'],
       ['add', '/add', 'Add'],
       ['tasks', '/tasks', 'Tasks'],
-      ['more', '/more', 'More'],
+      ['more', '/settings', 'More'],
     ]);
   });
 

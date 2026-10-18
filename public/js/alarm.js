@@ -4,7 +4,7 @@
  * Snooze 5, 10 and 15 minutes, and Dismiss. Where the page has the Notifications API it
  * also raises a system notification, and asks for permission when the user allows it.
  * Loaded with `defer` by the layout on a page with a reminder. Its only clock is the
- * interval.
+ * interval. It plays the sound unless localStorage `alarm-sound` is `off` (022).
  */
 (function () {
   var POLL_MS = 30000;
@@ -34,11 +34,20 @@
     if (permission) permission.hidden = false;
   }
 
+  /* The choice of the settings page. Blocked storage counts as no choice: the sound plays. */
+  function soundOn() {
+    try {
+      return localStorage.getItem('alarm-sound') !== 'off';
+    } catch (error) {
+      return true;
+    }
+  }
+
   function show(alarm) {
     current = alarm;
     title.textContent = alarm.title;
     overlay.hidden = false;
-    if (sound) {
+    if (sound && soundOn()) {
       var playing = sound.play();
       if (playing && typeof playing.catch === 'function') playing.catch(function () {});
     }

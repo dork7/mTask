@@ -12,6 +12,7 @@ import { createOverdueRouter } from './routes/overdue.ts';
 import { createPushRouter } from './routes/push.ts';
 import { createRemindersRouter } from './routes/reminders.ts';
 import { createReviewRouter } from './routes/review.ts';
+import { createSettingsRouter } from './routes/settings.ts';
 import { styleguideRouter } from './routes/styleguide.ts';
 import { createTasksRouter } from './routes/tasks.ts';
 import { createTimelineRouter } from './routes/timeline.ts';
@@ -80,6 +81,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createTimelineRouter(deps));
   app.use(createDigestRouter(deps));
   app.use(createCalendarRouter(deps));
+  app.use(createSettingsRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {

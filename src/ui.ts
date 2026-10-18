@@ -12,7 +12,7 @@ export const navItems = [
   { id: 'timeline', href: '/timeline', label: 'Timeline', glyph: '▤' },
   { id: 'add', href: '/add', label: 'Add', glyph: '+' },
   { id: 'tasks', href: '/tasks', label: 'Tasks', glyph: '☰' },
-  { id: 'more', href: '/more', label: 'More', glyph: '⋯' },
+  { id: 'more', href: '/settings', label: 'More', glyph: '⋯' },
 ] as const;
 
 /** The priorities, most pressing first. The id is also the name of the color token. */
