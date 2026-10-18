@@ -34,6 +34,7 @@ export function createMiniBarMiddleware(deps: AppDeps): RequestHandler {
     let miniBar: MiniBar | null | undefined;
     Object.defineProperty(res.locals, 'miniBar', {
       enumerable: true,
+      configurable: true,
       get: () => {
         if (miniBar === undefined) miniBar = miniBarOf(runningTask(listTasks(deps.db, { status: 'in_progress' })), now);
         return miniBar;
@@ -42,6 +43,7 @@ export function createMiniBarMiddleware(deps: AppDeps): RequestHandler {
     let alarm: boolean | undefined;
     Object.defineProperty(res.locals, 'alarm', {
       enumerable: true,
+      configurable: true,
       get: () => {
         if (alarm === undefined) alarm = anyReminder(listTasks(deps.db));
         return alarm;
@@ -49,6 +51,16 @@ export function createMiniBarMiddleware(deps: AppDeps): RequestHandler {
     });
     next();
   };
+}
+
+/**
+ * Replaces the lazy `miniBar` and `alarm` of this answer with `null` and `false`, so the
+ * layout reads neither from the database. The error page calls it: it has no use for
+ * them, and the database may be what failed.
+ */
+export function skipLayoutReads(res: Response): void {
+  Object.defineProperty(res.locals, 'miniBar', { value: null, enumerable: true, configurable: true, writable: true });
+  Object.defineProperty(res.locals, 'alarm', { value: false, enumerable: true, configurable: true, writable: true });
 }
 
 /** The time of this request, as the middleware read it. */

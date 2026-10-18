@@ -23,7 +23,8 @@ import {
 import { daysOf, repeatOf, repeats, weekdays, type Repeat, type Weekday } from '../services/recurrence.ts';
 import { placeTasks } from '../services/scheduler.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
-import { answerAnalysis, reviewPath } from './add.ts';
+import type { RateLimiter } from '../services/rate-limit.ts';
+import { answerAnalysis, limitAnalysis, reviewPath } from './add.ts';
 
 const NO_TITLE = 'Give every task a title.';
 const BAD_MINUTES = 'Set every duration to a whole number of minutes from 1 to 1440.';
@@ -158,9 +159,10 @@ function renderReview(
 /**
  * The review of the drafts of one source: the page, and the posts that analyze the source
  * again, confirm the drafts, remove one and discard them all. A `sourceId` that names no
- * source falls through to the app's not-found page.
+ * source falls through to the app's not-found page. The analysis counts against the AI
+ * rate limit `limiter`.
  */
-export function createReviewRouter(deps: AppDeps): Router {
+export function createReviewRouter(deps: AppDeps, limiter: RateLimiter): Router {
   const router = Router();
   // The review form posts flat fields, so the simple parser is enough.
   const form = express.urlencoded({ extended: false });
@@ -176,7 +178,7 @@ export function createReviewRouter(deps: AppDeps): Router {
 
   // Only a source that has no task yet is analyzed. Express hands a rejection to its
   // error handler.
-  router.post('/review/:sourceId/analyze', async (req, res, next) => {
+  router.post('/review/:sourceId/analyze', limitAnalysis(limiter, 'photo'), async (req, res, next) => {
     const source = findSource(deps.db, req.params.sourceId);
     if (source === undefined) {
       next();

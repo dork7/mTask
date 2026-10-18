@@ -1,0 +1,7 @@
+<%#
+  undoButton: { action }
+  The Undo button of a toast: a form that posts to `action`.
+-%>
+<form method="post" action="<%= undoButton.action %>">
+  <%- include('button', { button: { label: 'Undo', variant: 'ghost', type: 'submit' } }) -%>
+</form>

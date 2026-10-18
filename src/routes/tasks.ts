@@ -1,9 +1,9 @@
 import express, { Router, type Response } from 'express';
 import type { AppDeps } from '../app.ts';
 import type { Database } from '../db/database.ts';
-import { deleteTask, getTask, listTasks, type Task, type TaskStatus } from '../db/tasks.ts';
+import { getTask, listTasks, type Task, type TaskStatus } from '../db/tasks.ts';
 import { dateTimeValue, dayTimeLabel } from '../dubai.ts';
-import { renderPage } from '../render.ts';
+import { renderPage, type PageToast } from '../render.ts';
 import { postedStrings, postedValue, type DraftProblems } from '../services/drafts.ts';
 import { dismissTask, readSnooze, snoozeTask } from '../services/reminders.ts';
 import { daysOf, repeatOf, repeats, weekdays, type Repeat, type Weekday } from '../services/recurrence.ts';
@@ -28,9 +28,21 @@ import {
   togglePriority,
   toggleSlot,
   withQuery,
+  withToastParam,
   type ListQuery,
 } from '../services/task-list.ts';
 import { timerOf, type TaskTimer } from '../services/timer.ts';
+import {
+  DELETED_TOAST,
+  DONE_TOAST,
+  canUndoDelete,
+  canUndoDone,
+  deleteWithUndo,
+  doneWithUndo,
+  undoDelete,
+  undoDone,
+  type UndoStore,
+} from '../services/undo.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
 import { requestTime } from './mini-bar.ts';
 import { readId } from './review.ts';
@@ -111,8 +123,8 @@ function cardOf(task: Task, list: ListQuery, now: Date): TaskCard {
   };
 }
 
-/** Renders the list for this query at `now`. */
-function renderList(res: Response, db: Database, list: ListQuery, now: Date): void {
+/** Renders the list for this query at `now`, with this toast in the layout's live region. */
+function renderList(res: Response, db: Database, list: ListQuery, now: Date, toast: PageToast | null = null): void {
   const listed = listTasks(db).filter(isListed);
   const shown = shownTasks(listed, list);
 
@@ -138,6 +150,7 @@ function renderList(res: Response, db: Database, list: ListQuery, now: Date): vo
   renderPage(res, 'tasks', {
     title: 'Tasks',
     nav: 'tasks',
+    toast,
     tasks: {
       bar,
       active,
@@ -288,20 +301,39 @@ function renderSheet(res: Response, task: Task, now: Date, status = 200, body: u
 }
 
 /**
+ * The toast of the list a Delete or a Done of it led to, while that can still be undone:
+ * `deleted=<id>` or `done=<id>` in the query. `null` for none.
+ */
+function listToast(db: Database, undo: UndoStore, query: unknown, list: ListQuery): PageToast | null {
+  const { deleted, done } = query as { deleted?: unknown; done?: unknown };
+  const deletedId = readId(deleted);
+  if (deletedId !== undefined && canUndoDelete(undo, deletedId)) {
+    return { message: DELETED_TOAST, undoAction: withQuery(`${taskPath(deletedId)}/undo-delete`, list) };
+  }
+  const doneId = readId(done);
+  if (doneId !== undefined && canUndoDone(db, undo, doneId)) {
+    return { message: DONE_TOAST, undoAction: withQuery(`${taskPath(doneId)}/undo-done`, list) };
+  }
+  return null;
+}
+
+/**
  * The task list and what it does to one task: the list, Done, Reschedule, the edit page
- * and its post, Delete, Snooze and Dismiss, and the task's sheet, its post and Start. An
+ * and its post, Delete, Snooze and Dismiss, the undo of Delete and Done, and the task's
+ * sheet, its post and Start. Delete and Done from the list are kept in `undo`. An
  * id that names no task, names a draft or is not written as an id falls through to the
  * app's not-found page. The sheet's post, Start, and Done from the sheet go back to the
  * sheet; every other redirect goes to the list, with the query of the request as the app
  * writes it.
  */
-export function createTasksRouter(deps: AppDeps): Router {
+export function createTasksRouter(deps: AppDeps, undo: UndoStore): Router {
   const router = Router();
   // The edit form posts flat fields, so the simple parser is enough.
   const form = express.urlencoded({ extended: false });
 
   router.get(LIST_PATH, (req, res) => {
-    renderList(res, deps.db, readListQuery(req.query), new Date());
+    const list = readListQuery(req.query);
+    renderList(res, deps.db, list, new Date(), listToast(deps.db, undo, req.query, list));
   });
 
   router.post(`${LIST_PATH}/:taskId/done`, (req, res, next) => {
@@ -310,10 +342,24 @@ export function createTasksRouter(deps: AppDeps): Router {
       next();
       return;
     }
-    markDone(deps.db, task, requestTime(res));
-    const back =
-      req.query.from === 'sheet' ? taskPath(task.id) : `${withQuery(LIST_PATH, readListQuery(req.query))}#task-${task.id}`;
-    res.redirect(303, back);
+    // Done from the sheet and the mini-bar answers with the sheet's summary, not a toast.
+    if (req.query.from === 'sheet') {
+      markDone(deps.db, task, requestTime(res));
+      res.redirect(303, taskPath(task.id));
+      return;
+    }
+    const list = withQuery(LIST_PATH, readListQuery(req.query));
+    const written = doneWithUndo(deps.db, undo, task, requestTime(res));
+    res.redirect(303, `${written ? withToastParam(list, 'done', task.id) : list}#task-${task.id}`);
+  });
+
+  router.post(`${LIST_PATH}/:taskId/undo-done`, (req, res, next) => {
+    const id = readId(req.params.taskId);
+    if (id === undefined || undoDone(deps.db, undo, id) === undefined) {
+      next();
+      return;
+    }
+    res.redirect(303, `${withQuery(LIST_PATH, readListQuery(req.query))}#task-${id}`);
   });
 
   router.post(`${LIST_PATH}/:taskId/reschedule`, (req, res, next) => {
@@ -356,8 +402,18 @@ export function createTasksRouter(deps: AppDeps): Router {
       next();
       return;
     }
-    deleteTask(deps.db, task.id);
-    res.redirect(303, withQuery(LIST_PATH, readListQuery(req.query)));
+    deleteWithUndo(deps.db, undo, task);
+    res.redirect(303, withToastParam(withQuery(LIST_PATH, readListQuery(req.query)), 'deleted', task.id));
+  });
+
+  // The id is read, not looked up: a deleted task is not there to be found.
+  router.post(`${LIST_PATH}/:taskId/undo-delete`, (req, res, next) => {
+    const id = readId(req.params.taskId);
+    if (id === undefined || undoDelete(deps.db, undo, id) === undefined) {
+      next();
+      return;
+    }
+    res.redirect(303, `${withQuery(LIST_PATH, readListQuery(req.query))}#task-${id}`);
   });
 
   router.post(`${LIST_PATH}/:taskId/snooze`, form, (req, res, next) => {

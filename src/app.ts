@@ -6,6 +6,7 @@ import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
 import { createCalendarRouter } from './routes/calendar.ts';
 import { createDigestRouter } from './routes/digest.ts';
+import { createErrorHandler } from './routes/errors.ts';
 import { createHomeRouter } from './routes/home.ts';
 import { createMiniBarMiddleware } from './routes/mini-bar.ts';
 import { createOverdueRouter } from './routes/overdue.ts';
@@ -18,6 +19,8 @@ import { createTasksRouter } from './routes/tasks.ts';
 import { createTimelineRouter } from './routes/timeline.ts';
 import type { Analyze } from './services/analyzer.ts';
 import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
+import { AI_RATE_LIMIT, createRateLimiter } from './services/rate-limit.ts';
+import { createUndoStore } from './services/undo.ts';
 import { repeats, weekdays } from './services/recurrence.ts';
 import { ui } from './ui.ts';
 
@@ -49,6 +52,10 @@ export function createApp(deps: AppDeps): Express {
   }
 
   const app = express();
+  // One limit for the four AI endpoints, kept for the life of this app.
+  const aiLimiter = createRateLimiter(AI_RATE_LIMIT);
+  // What Delete and Done took or changed, for their undo, kept for the life of this app.
+  const undo = createUndoStore();
 
   app.set('view engine', 'ejs');
   app.set('views', viewsDir);
@@ -72,12 +79,12 @@ export function createApp(deps: AppDeps): Express {
   );
   app.use(createMiniBarMiddleware(deps));
   app.use(createHomeRouter(deps));
-  app.use(createAddRouter(deps));
-  app.use(createReviewRouter(deps));
-  app.use(createTasksRouter(deps));
+  app.use(createAddRouter(deps, aiLimiter));
+  app.use(createReviewRouter(deps, aiLimiter));
+  app.use(createTasksRouter(deps, undo));
   app.use(createPushRouter(deps));
   app.use(createRemindersRouter(deps));
-  app.use(createOverdueRouter(deps));
+  app.use(createOverdueRouter(deps, undo));
   app.use(createTimelineRouter(deps));
   app.use(createDigestRouter(deps));
   app.use(createCalendarRouter(deps));
@@ -88,6 +95,7 @@ export function createApp(deps: AppDeps): Express {
     res.status(404);
     renderPage(res, 'not-found', { title: 'Page not found' });
   });
+  app.use(createErrorHandler());
 
   return app;
 }

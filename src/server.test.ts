@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * replaced by a spy, so a developer's own `.env` cannot change the result. `getPort`,
  * `getDatabasePath`, `getUploadsDir`, `getAnthropicApiKey` and `getAnthropicModel` stay
  * the real ones. The reminder, push and digest jobs are replaced by spies, so none of
- * them starts a timer.
+ * them starts a timer, and so is the photo cleanup, so it never reads the stand-in
+ * database.
  */
 
 const listen = vi.fn();
@@ -29,6 +30,7 @@ const KEYS = {
 const database = { name: 'the database openDatabase returned' };
 const openDatabase = vi.fn((_file: string) => database);
 const startRecurrence = vi.fn();
+const startPhotoCleanup = vi.fn();
 const ensureFeedToken = vi.fn();
 const createApp = vi.fn(
   (_deps: { db: unknown; uploadsDir: string; analyze: unknown; vapidPublicKey?: string | null }) => ({ listen }),
@@ -60,6 +62,7 @@ beforeEach(() => {
   vi.doMock('./services/reminders.ts', () => ({ startReminderJob }));
   vi.doMock('./services/digest.ts', () => ({ startDigestJob }));
   vi.doMock('./services/recurrence.ts', () => ({ startRecurrence }));
+  vi.doMock('./services/photo-cleanup.ts', () => ({ startPhotoCleanup }));
   vi.doMock('./services/calendar.ts', () => ({ ensureFeedToken }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
@@ -76,6 +79,7 @@ afterEach(() => {
   vi.doUnmock('./services/reminders.ts');
   vi.doUnmock('./services/digest.ts');
   vi.doUnmock('./services/recurrence.ts');
+  vi.doUnmock('./services/photo-cleanup.ts');
   vi.doUnmock('./services/calendar.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
@@ -307,5 +311,20 @@ describe('server: the calendar feed token (021 AC5)', () => {
     expect(ensureFeedToken.mock.calls[0][0]).toBe(database);
     expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(ensureFeedToken.mock.invocationCallOrder[0]);
     expect(ensureFeedToken.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+  });
+});
+
+describe('server: the photo cleanup (023 AC5)', () => {
+  it('starts the photo cleanup once, on the database it opened and the configured uploads folder', async () => {
+    const uploadsDir = path.join(tmpdir(), `mtask-server-test-${process.pid}`, 'uploads');
+    vi.stubEnv('UPLOADS_DIR', uploadsDir);
+
+    await startServer();
+
+    expect(startPhotoCleanup).toHaveBeenCalledTimes(1);
+    expect(startPhotoCleanup.mock.calls[0][0]).toBe(database);
+    expect(startPhotoCleanup.mock.calls[0][1]).toBe(uploadsDir);
+    expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(startPhotoCleanup.mock.invocationCallOrder[0]);
+    expect(existsSync(uploadsDir)).toBe(false);
   });
 });
