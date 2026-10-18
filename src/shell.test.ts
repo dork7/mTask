@@ -14,7 +14,7 @@ import {
 import { getPage, renderView } from './testing/page.ts';
 import { navItems } from './ui.ts';
 
-const NAV_HREFS = ['/', '/timeline', '/add', '/tasks', '/more'];
+const NAV_HREFS = ['/', '/timeline', '/add', '/tasks', '/settings'];
 const NAV_LABELS = ['Today', 'Timeline', 'Add', 'Tasks', 'More'];
 
 /** `compareDocumentPosition` sets this bit when the argument comes later in the document. */
@@ -342,7 +342,7 @@ describe('existing pages in the new layout (AC7)', () => {
   });
 
   it.each(['/more'])(
-    '%s answers with the not-found page until its job builds it',
+    '%s answers with the not-found page',
     async (path) => {
       const { status, document } = await getPage(path);
 

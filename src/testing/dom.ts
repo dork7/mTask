@@ -1,5 +1,6 @@
 import {
   JSDOM,
+  type DomCheckbox,
   type DomDocument,
   type DomElement,
   type DomFile,
@@ -8,7 +9,7 @@ import {
   type DomWindow,
 } from 'jsdom';
 
-export type { DomDocument, DomElement, DomFile, DomFileInput, DomInput, DomWindow };
+export type { DomCheckbox, DomDocument, DomElement, DomFile, DomFileInput, DomInput, DomWindow };
 
 /** The address the pages are opened at. localStorage needs a real origin. */
 const PAGE_URL = 'http://localhost/';

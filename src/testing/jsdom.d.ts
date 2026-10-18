@@ -23,6 +23,8 @@ declare module 'jsdom' {
     readonly outerHTML: string;
     textContent: string | null;
     innerHTML: string;
+    /** The `hidden` attribute, as a property. */
+    hidden: boolean;
     getAttribute(name: string): string | null;
     hasAttribute(name: string): boolean;
     querySelector(selector: string): DomElement | null;
@@ -58,6 +60,12 @@ declare module 'jsdom' {
   /** An `<input>` that holds text, a `<select>`, or any other control with a value. */
   export interface DomInput extends DomElement {
     value: string;
+    select(): void;
+  }
+
+  /** An `<input type="checkbox">`. */
+  export interface DomCheckbox extends DomElement {
+    checked: boolean;
   }
 
   export interface DomEvent {
@@ -116,11 +124,13 @@ declare module 'jsdom' {
   export interface DomPushSubscription {
     readonly endpoint: string;
     toJSON(): { readonly endpoint: string; readonly keys: { readonly p256dh: string; readonly auth: string } };
+    unsubscribe?(): Promise<boolean>;
   }
 
   /** The registration's push manager. jsdom has none; a test puts a stub here. */
   export interface DomPushManager {
     subscribe(options: { userVisibleOnly: boolean; applicationServerKey: string }): Promise<DomPushSubscription>;
+    getSubscription?(): Promise<DomPushSubscription | null>;
   }
 
   /** A service worker registration, as the page's `ready` answers it. */
@@ -155,8 +165,11 @@ declare module 'jsdom' {
     fetch: (url: string, init?: DomRequestInit) => Promise<DomResponse>;
     /** The Notifications API. jsdom has none; a test puts a stub here. */
     Notification?: DomNotificationClass;
-    /** The Service Worker API. jsdom has none; a test puts `serviceWorker` on it. */
-    readonly navigator: { serviceWorker?: DomServiceWorkerContainer };
+    /** The Service Worker API and the clipboard. jsdom has neither; a test puts them on it. */
+    readonly navigator: {
+      serviceWorker?: DomServiceWorkerContainer;
+      clipboard?: { writeText(text: string): Promise<void> };
+    };
     /** The media element class, for stubbing `play` and `pause`. */
     HTMLMediaElement: { prototype: { play: () => unknown; pause: () => void } };
     /** The page's own `Date`. `stubClock` replaces `now`. */

@@ -1318,6 +1318,46 @@ h2 {
   white-space: nowrap;
 }
 
+/* Settings: the working-hours form, the read-only slot rules and the rows of controls. */
+.settings-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.settings-form__label {
+  font-weight: 700;
+}
+
+.settings-form .field {
+  width: auto;
+}
+
+.slot-rules {
+  padding: 0;
+  list-style: none;
+}
+
+.slot-rule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.slot-rule:last-child {
+  border-bottom: 0;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* A task's priority as a dot. The name is on the dot for screen readers; the color repeats it. */
 .dot {
   flex: none;
