@@ -97,3 +97,39 @@ Verdict: READY
 - **Node 22 and 24 were not checked.** This build ran on Node 26.8.2 only.
 
 Nothing else in the spec, the design or the plan was skipped.
+
+## Round 1
+
+| Finding | What I did | What I saw fail |
+|---|---|---|
+| review-human.md: "merge main and resolve the conflicts" (CHANGES) | Not done. The builder's rules forbid merging, rebasing or switching branches (merges belong to the orchestrator). I previewed the merge without touching the branch, with `git merge-tree --write-tree --name-only main HEAD`: main has moved on with 016-recurring and 021-calendar-export, and four files conflict: `factory/backlog.md`, `src/app.ts`, `src/server.ts`, `src/server.test.ts`. No code changed this round. | Nothing to break; no behaviour changed. |
+
+To go ahead, the orchestrator (or the user) needs to either merge `main` into
+`factory/020-digest` and resolve those four files itself, or give the builder an explicit
+exception to the no-merge rule for this round.
+
+### Test run
+
+`yarn build`:
+
+```
+$ tsc --noEmit
+Done in 2.15s.
+```
+
+`yarn test`:
+
+```
+ Test Files  77 passed (77)
+      Tests  2064 passed (2064)
+Done in 4.47s.
+```
+
+```
+VERIFICATION
+Build: PASS
+Tests: PASS   (2064 passed, 0 failed)
+Lint:  SKIPPED
+Diff:  PASS
+Verdict: READY (for the branch as it stands; the round 1 finding is still open, see above)
+```
