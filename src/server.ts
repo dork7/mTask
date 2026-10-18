@@ -12,9 +12,11 @@ import {
 } from './config.ts';
 import { openDatabase } from './db/database.ts';
 import { createAnalyze } from './services/analyzer.ts';
+import { ensureFeedToken } from './services/calendar.ts';
 import { startDigestJob } from './services/digest.ts';
 import { startPushJob, type PushSender } from './services/push.ts';
 import { startReminderJob } from './services/reminders.ts';
+import { startRecurrence } from './services/recurrence.ts';
 
 loadEnv();
 const port = getPort();
@@ -22,6 +24,10 @@ const port = getPort();
 // The database is opened once, here, and handed down. When it cannot be opened the
 // process stops before it listens. The process ending closes it.
 const db = openDatabase(getDatabasePath());
+// The recurring job: once now and every 15 minutes. The process ending stops it.
+startRecurrence(db);
+// The calendar feed's secret: made once, kept across restarts (021).
+ensureFeedToken(db);
 // Without a key the server still starts: the analyzer then refuses every photo.
 const analyze = createAnalyze(getAnthropicApiKey(), getAnthropicModel());
 const vapid = getVapidKeys();

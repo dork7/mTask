@@ -2,9 +2,10 @@
   The Review screen: what the analyzer read from one source, before any of it is saved.
   review: { source, cards, savedCount, errors, confirmAction, discardAction }
   `source` is the row of the photo or the transcript. `cards` are its drafts, each with
-  the values of its controls, the names they post under (`fields`) and where it would
-  land if it were confirmed now (`land`). `savedCount` is how many tasks the source has
-  when it has no draft, else 0. `errors` are the messages of a refused confirm.
+  the values of its controls, the names they post under (`fields`), where it would land
+  if it were confirmed now (`land`) and its repeat picker. `savedCount` is how many tasks
+  the source has when it has no draft, else 0. `errors` are the messages of a refused
+  confirm.
   `confirmAction` and `discardAction` are where the form posts.
   With cards the page is the form; without, it says how many tasks are saved, or that
   there is nothing to review.
@@ -69,6 +70,20 @@
         <option value="<%= item.id %>"<% if (card.slot === item.id) { %> selected<% } %>><%= item.label %></option>
 <% } -%>
       </select>
+      <select class="field" name="<%= card.fields.repeat %>" aria-label="Repeat">
+<% for (const item of recurrence.repeats) { -%>
+        <option value="<%= item.id %>"<% if (card.repeat === item.id) { %> selected<% } %>><%= item.label %></option>
+<% } -%>
+      </select>
+      <fieldset class="choices">
+        <legend class="visually-hidden">Repeat days</legend>
+<% for (const day of recurrence.weekdays) { -%>
+        <label class="choice">
+          <input type="checkbox" name="<%= card.fields['repeat-days'] %>" value="<%= day.id %>"<% if (card.days.includes(day.id)) { %> checked<% } %>>
+          <span><%= day.label %></span>
+        </label>
+<% } -%>
+      </fieldset>
     </li>
 <% } -%>
   </ol>

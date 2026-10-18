@@ -4,6 +4,7 @@ import type { Database } from './db/database.ts';
 import { publicDir, viewsDir } from './paths.ts';
 import { renderPage } from './render.ts';
 import { createAddRouter } from './routes/add.ts';
+import { createCalendarRouter } from './routes/calendar.ts';
 import { createDigestRouter } from './routes/digest.ts';
 import { createHomeRouter } from './routes/home.ts';
 import { createMiniBarMiddleware } from './routes/mini-bar.ts';
@@ -16,6 +17,7 @@ import { createTasksRouter } from './routes/tasks.ts';
 import { createTimelineRouter } from './routes/timeline.ts';
 import type { Analyze } from './services/analyzer.ts';
 import { UPLOADS_URL_PATH } from './services/photo-storage.ts';
+import { repeats, weekdays } from './services/recurrence.ts';
 import { ui } from './ui.ts';
 
 /** What the app is built from. `server.ts` supplies the real ones, tests their own. */
@@ -52,6 +54,7 @@ export function createApp(deps: AppDeps): Express {
   app.locals.appName = 'Task Image AI';
   app.locals.ui = ui;
   app.locals.vapidPublicKey = deps.vapidPublicKey ?? null;
+  app.locals.recurrence = { repeats, weekdays };
 
   app.use(express.static(publicDir));
   // Stored photos. The bytes of an upload are never inspected, so the browser is told
@@ -76,6 +79,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(createOverdueRouter(deps));
   app.use(createTimelineRouter(deps));
   app.use(createDigestRouter(deps));
+  app.use(createCalendarRouter(deps));
   app.use(styleguideRouter);
 
   app.use((_req, res) => {

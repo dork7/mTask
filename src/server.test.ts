@@ -28,6 +28,8 @@ const KEYS = {
 /** Stands in for the open database. `server.ts` only hands it on. */
 const database = { name: 'the database openDatabase returned' };
 const openDatabase = vi.fn((_file: string) => database);
+const startRecurrence = vi.fn();
+const ensureFeedToken = vi.fn();
 const createApp = vi.fn(
   (_deps: { db: unknown; uploadsDir: string; analyze: unknown; vapidPublicKey?: string | null }) => ({ listen }),
 );
@@ -57,6 +59,8 @@ beforeEach(() => {
   vi.doMock('./services/push.ts', () => ({ startPushJob }));
   vi.doMock('./services/reminders.ts', () => ({ startReminderJob }));
   vi.doMock('./services/digest.ts', () => ({ startDigestJob }));
+  vi.doMock('./services/recurrence.ts', () => ({ startRecurrence }));
+  vi.doMock('./services/calendar.ts', () => ({ ensureFeedToken }));
   vi.doMock('./config.ts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./config.ts')>();
     return { ...actual, loadEnv, getVapidKeys };
@@ -71,6 +75,8 @@ afterEach(() => {
   vi.doUnmock('./services/push.ts');
   vi.doUnmock('./services/reminders.ts');
   vi.doUnmock('./services/digest.ts');
+  vi.doUnmock('./services/recurrence.ts');
+  vi.doUnmock('./services/calendar.ts');
   vi.doUnmock('./config.ts');
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -280,5 +286,26 @@ describe('server: the reminder, push and digest jobs (019 AC7, 020 AC10)', () =>
     expect(createApp.mock.invocationCallOrder[0]).toBeLessThan(startPushJob.mock.invocationCallOrder[0]);
     expect(startPushJob.mock.invocationCallOrder[0]).toBeLessThan(startDigestJob.mock.invocationCallOrder[0]);
     expect(startDigestJob.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
+  });
+});
+
+describe('server: the recurring job (016 AC7)', () => {
+  it('starts the recurring job once, on the database it opened, after it opens it', async () => {
+    await startServer();
+
+    expect(startRecurrence).toHaveBeenCalledTimes(1);
+    expect(startRecurrence.mock.calls[0][0]).toBe(database);
+    expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(startRecurrence.mock.invocationCallOrder[0]);
+  });
+});
+
+describe('server: the calendar feed token (021 AC5)', () => {
+  it('stores the feed token once, on the database it opened, before it listens', async () => {
+    await startServer();
+
+    expect(ensureFeedToken).toHaveBeenCalledTimes(1);
+    expect(ensureFeedToken.mock.calls[0][0]).toBe(database);
+    expect(openDatabase.mock.invocationCallOrder[0]).toBeLessThan(ensureFeedToken.mock.invocationCallOrder[0]);
+    expect(ensureFeedToken.mock.invocationCallOrder[0]).toBeLessThan(listen.mock.invocationCallOrder[0]);
   });
 });

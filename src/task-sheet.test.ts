@@ -163,6 +163,7 @@ describe('the edit fields (AC3)', () => {
       minutes: '45',
       priority: 'high',
       slot: 'evening',
+      repeat: '',
       category: 'calls',
       reminder: '2026-10-12T20:00',
     });

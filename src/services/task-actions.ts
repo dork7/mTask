@@ -3,8 +3,9 @@ import { updateTask, type Task } from '../db/tasks.ts';
 import { inTransaction } from '../db/transaction.ts';
 import { instantOfDateTime } from '../dubai.ts';
 import { priorities, slots, type Priority, type Slot } from '../ui.ts';
-import { postedValue, readMinutes, type DraftProblems } from './drafts.ts';
+import { postedStrings, postedValue, readMinutes, type DraftProblems } from './drafts.ts';
 import type { TaskTimes } from './overdue.ts';
+import { makeNextInstance, repeatRule } from './recurrence.ts';
 import { placeTasks, storeSchedule } from './scheduler.ts';
 import { workedMinutes } from './timer.ts';
 
@@ -46,6 +47,7 @@ export function readTaskEdit(body: unknown): TaskEditReading {
     title: trimmed === '',
     minutes: estimated === undefined,
     choice: priority === undefined || slot === undefined,
+    repeat: false,
   };
   if (trimmed === '' || estimated === undefined || priority === undefined || slot === undefined) {
     return { edit: undefined, problems };
@@ -58,6 +60,8 @@ export interface SheetEdit extends TaskEdit {
   category: string | null;
   description: string | null;
   reminder_at: string | null;
+  /** The rule, or `null` for `Does not repeat`. */
+  recurrence_rule?: string | null;
 }
 
 /** What was wrong in a posted sheet: the problems of the edit page, and a reminder that is no date and time. */
@@ -85,20 +89,28 @@ export function readSheetEdit(body: unknown): SheetEditReading {
   const base = readTaskEdit(body);
   const reminderText = optionalText(body, 'reminder');
   const reminder = reminderText === '' ? null : instantOfDateTime(reminderText);
-  const problems: SheetProblems = { ...base.problems, reminder: reminder === undefined };
-  if (base.edit === undefined || reminder === undefined) return { edit: undefined, problems };
+
+  const postedRepeat = postedValue(body, 'repeat');
+  // `false` is a repeat that is not one of the four values, or a day that is not one of the seven.
+  let rule: string | null | false | undefined = undefined;
+  if (postedRepeat !== undefined) {
+    const read = postedRepeat === null ? undefined : repeatRule(postedRepeat, postedStrings(body, 'repeat-days'));
+    rule = read === undefined ? false : read;
+  }
+
+  const problems: SheetProblems = { ...base.problems, reminder: reminder === undefined, repeat: rule === false };
+  if (base.edit === undefined || reminder === undefined || rule === false) return { edit: undefined, problems };
 
   const category = optionalText(body, 'category');
   const description = optionalText(body, 'description');
-  return {
-    edit: {
-      ...base.edit,
-      category: category === '' ? null : category,
-      description: description === '' ? null : description,
-      reminder_at: reminder === null ? null : reminder.toISOString(),
-    },
-    problems,
+  const edit: SheetEdit = {
+    ...base.edit,
+    category: category === '' ? null : category,
+    description: description === '' ? null : description,
+    reminder_at: reminder === null ? null : reminder.toISOString(),
   };
+  if (rule !== undefined) edit.recurrence_rule = rule;
+  return { edit, problems };
 }
 
 /** Starts a `pending` task at `now`. A task of any other status is not written. */
@@ -118,7 +130,10 @@ export function markDone(db: Database, task: Task, now: Date): void {
     task.status === 'in_progress' && task.started_at !== null
       ? { actual_minutes: workedMinutes(task.started_at, now) }
       : {};
-  updateTask(db, task.id, { status: 'done', completed_at: now.toISOString(), ...worked });
+  inTransaction(db, () => {
+    updateTask(db, task.id, { status: 'done', completed_at: now.toISOString(), ...worked });
+    makeNextInstance(db, task, now);
+  });
 }
 
 /**

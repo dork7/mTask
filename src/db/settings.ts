@@ -23,6 +23,8 @@ export interface Settings {
   working_hours: { start: string; end: string };
   /** The category rules, in the order they apply: the first rule that names a category is the one used. */
   slot_rules: SlotRule[];
+  /** The secret the calendar feed's URL carries as `?token=` (021). */
+  feed_token: string;
 }
 
 export type SettingKey = keyof Settings;

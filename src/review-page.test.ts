@@ -375,7 +375,7 @@ describe('the cards of the review page (AC8)', () => {
     const document = await served(source.id);
 
     for (const draft of drafts) {
-      const select = one(cardOf(document, draft), 'select');
+      const select = one(cardOf(document, draft), 'select[name^="slot-"]');
       const options = all(select, 'option');
 
       expect(select.getAttribute('name')).toBe(`slot-${draft.id}`);
@@ -391,7 +391,7 @@ describe('the cards of the review page (AC8)', () => {
     const { source, drafts } = seedOne({ time_slot: 'evening' });
 
     const document = await served(source.id);
-    const select = one(cardOf(document, drafts[0]), 'select');
+    const select = one(cardOf(document, drafts[0]), 'select[name^="slot-"]');
 
     expect(all(select, 'option[selected]').map((option) => option.getAttribute('value'))).toEqual(['evening']);
   });
@@ -434,14 +434,17 @@ describe('the cards of the review page (AC8)', () => {
       [`minutes-${first.id}`]: '90',
       [`priority-${first.id}`]: 'high',
       [`slot-${first.id}`]: '',
+      [`repeat-${first.id}`]: '',
       [`title-${second.id}`]: milk.title,
       [`minutes-${second.id}`]: '40',
       [`priority-${second.id}`]: 'medium',
       [`slot-${second.id}`]: '',
+      [`repeat-${second.id}`]: '',
       [`title-${third.id}`]: bank.title,
       [`minutes-${third.id}`]: '15',
       [`priority-${third.id}`]: 'low',
       [`slot-${third.id}`]: '',
+      [`repeat-${third.id}`]: '',
     });
   });
 });

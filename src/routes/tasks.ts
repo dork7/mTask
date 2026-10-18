@@ -4,8 +4,9 @@ import type { Database } from '../db/database.ts';
 import { deleteTask, getTask, listTasks, type Task, type TaskStatus } from '../db/tasks.ts';
 import { dateTimeValue, dayTimeLabel } from '../dubai.ts';
 import { renderPage } from '../render.ts';
-import { postedValue, type DraftProblems } from '../services/drafts.ts';
+import { postedStrings, postedValue, type DraftProblems } from '../services/drafts.ts';
 import { dismissTask, readSnooze, snoozeTask } from '../services/reminders.ts';
+import { daysOf, repeatOf, repeats, weekdays, type Repeat, type Weekday } from '../services/recurrence.ts';
 import {
   markDone,
   readSheetEdit,
@@ -38,6 +39,7 @@ const NO_TITLE = 'Give the task a title.';
 const BAD_MINUTES = 'Set the duration to a whole number of minutes from 1 to 1440.';
 const BAD_CHOICE = 'Choose a priority and a slot from the ones offered.';
 const BAD_REMINDER = 'Set the reminder as a date and time, or leave it empty.';
+const BAD_REPEAT = 'Choose a repeat from the ones offered.';
 
 /** What a card shows for a task without a start, without a slot, and without minutes. */
 const NOT_SCHEDULED = 'Not scheduled';
@@ -205,6 +207,8 @@ interface SheetForm extends Pick<EditForm, 'title' | 'minutes' | 'priority' | 's
   description: string;
   /** `YYYY-MM-DDTHH:MM` on the Dubai clock, or as posted, or ''. */
   reminder: string;
+  repeat: Repeat;
+  days: Weekday[];
 }
 
 /** The detail sheet of a task as `pages/task-sheet.ejs` shows it. `null`: not shown. */
@@ -228,6 +232,7 @@ interface TaskSheet {
 function sheetMessages(problems: SheetProblems): string[] {
   const messages = messagesOf(problems);
   if (problems.reminder) messages.push(BAD_REMINDER);
+  if (problems.repeat) messages.push(BAD_REPEAT);
   return messages;
 }
 
@@ -236,6 +241,19 @@ function shownOptional(body: unknown, name: string, stored: string): string {
   if (body === undefined) return stored;
   const posted = postedValue(body, name);
   return typeof posted === 'string' ? posted : '';
+}
+
+/** The Repeat picker of the sheet: the matching option, and the day boxes. As posted where the post has them, else as stored. */
+function shownRepeat(stored: string | null, body: unknown): { repeat: Repeat; days: Weekday[] } {
+  const repeat = repeatOf(stored);
+  if (body === undefined) return { repeat, days: daysOf(stored) };
+
+  const posted = postedValue(body, 'repeat');
+  const postedDays = postedStrings(body, 'repeat-days');
+  return {
+    repeat: repeats.find((item) => item.id === posted)?.id ?? repeat,
+    days: weekdays.filter((item) => postedDays.includes(item.id)).map((item) => item.id),
+  };
 }
 
 /** Renders the sheet of a task at `now`, with the values of a refused post when there is one. */
@@ -257,6 +275,7 @@ function renderSheet(res: Response, task: Task, now: Date, status = 200, body: u
     closeHref: `${LIST_PATH}#task-${task.id}`,
     form: {
       ...shownEdit(task, body),
+      ...shownRepeat(task.recurrence_rule, body),
       action: path,
       category: shownOptional(body, 'category', task.category ?? ''),
       description: shownOptional(body, 'description', task.description ?? ''),

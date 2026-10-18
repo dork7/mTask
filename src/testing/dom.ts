@@ -257,13 +257,14 @@ export function isShown(element: DomElement): boolean {
 /**
  * What a browser would post for a form as it was served, read from the attributes of a
  * page parsed with its scripts off: every named input with its `value` attribute, except
- * a radio that is not checked, and every named select with the value of its selected
- * option, or of its first. Buttons are left out.
+ * a radio or a checkbox that is not checked, and every named select with the value of
+ * its selected option, or of its first. Buttons are left out.
  */
 export function formFields(form: DomElement): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const input of all(form, 'input[name]')) {
-    if (input.getAttribute('type') === 'radio' && !input.hasAttribute('checked')) continue;
+    const type = input.getAttribute('type');
+    if ((type === 'radio' || type === 'checkbox') && !input.hasAttribute('checked')) continue;
     fields[input.getAttribute('name') ?? ''] = input.getAttribute('value') ?? '';
   }
   for (const select of all(form, 'select[name]')) {

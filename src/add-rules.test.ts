@@ -115,7 +115,7 @@ async function review(): Promise<DomDocument> {
 
 /** Per draft card, the texts of the options its slot picker has selected. */
 function selectedSlots(document: DomDocument): string[][] {
-  return all(document, '[data-draft] select').map((select) => all(select, 'option[selected]').map(textOf));
+  return all(document, '[data-draft] select[name^="slot-"]').map((select) => all(select, 'option[selected]').map(textOf));
 }
 
 /** Per draft card, the values of its checked priority buttons. */
