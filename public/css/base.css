@@ -1417,6 +1417,59 @@ h2 {
   font-size: var(--font-size-sm);
 }
 
+/* Digest: the morning summary of the day. */
+.digest__stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.digest__count {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.digest__planned {
+  color: var(--muted);
+}
+
+.digest__first {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.digest__list {
+  padding: 0;
+  list-style: none;
+}
+
+.digest__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.digest__item:last-child {
+  border-bottom: 0;
+}
+
+.digest__title {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.digest__time {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
 /* ---------- Style guide ---------- */
 
 .sg-section {

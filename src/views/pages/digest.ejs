@@ -1,0 +1,43 @@
+<%#
+  The Digest: the morning summary of the day.
+  digest: { date, countText, plannedText, first, overdue, overdueCount, addHref,
+  overdueHref, timelineHref }, built by `buildDigest` of src/services/digest.ts. `first` is
+  null when nothing is left today; `overdue` may be empty. The two empty states can appear
+  together, so each is told apart by its heading.
+-%>
+<%- include('../partials/page-header', { pageHeader: { heading: 'Digest', sub: digest.date } }) -%>
+
+<div class="card digest__stats">
+  <p class="digest__count" id="digest-count"><%= digest.countText %></p>
+  <p class="digest__planned" id="digest-planned"><%= digest.plannedText %></p>
+</div>
+
+<% if (digest.first !== null) { -%>
+<div class="card digest__first" id="digest-first">
+  <a class="digest__title" href="<%= digest.first.href %>"><%= digest.first.title %></a>
+  <span class="digest__time"><%= digest.first.time %></span>
+</div>
+<% } else { -%>
+<%- include('../partials/empty-state', { emptyState: {
+  heading: 'Nothing left today',
+  actions: include('../partials/button', { button: { label: 'Add a task', href: digest.addHref } }),
+} }) -%>
+<% } -%>
+
+<div class="card digest__overdue" id="digest-overdue">
+<% if (digest.overdue.length > 0) { -%>
+  <ul class="digest__list">
+<% for (const item of digest.overdue) { -%>
+    <li class="digest__item" id="digest-overdue-<%= item.id %>">
+      <a class="digest__title" href="<%= item.href %>"><%= item.title %></a>
+      <span class="digest__time"><%= item.due %></span>
+    </li>
+<% } -%>
+  </ul>
+  <%- include('../partials/button', { button: { label: 'Review overdue', href: digest.overdueHref, variant: 'ghost' } }) -%>
+<% } else { -%>
+  <%- include('../partials/empty-state', { emptyState: { heading: 'Nothing overdue' } }) -%>
+<% } -%>
+</div>
+
+<%- include('../partials/button', { button: { label: 'View timeline', href: digest.timelineHref, variant: 'ghost', attrs: { id: 'timeline-link' } } }) -%>

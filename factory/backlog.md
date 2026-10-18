@@ -27,7 +27,7 @@ The unchecked items are the backlog the dashboard shows, in the order they run.
 - [x] 017-pwa-shell: manifest, icons and offline app shell
 - [x] 018-reminders-and-alarm: urgent reminders with the in-page alarm
 - [x] 019-web-push: push notifications with the tab closed
-- [ ] 020-digest: morning digest page and push
+- [x] 020-digest: morning digest page and push
 - [x] 021-calendar-export: .ics downloads and the calendar feed
 - [ ] 022-settings: settings page
 - [ ] 023-hardening: error pages, rate limits, cleanup and accessibility
