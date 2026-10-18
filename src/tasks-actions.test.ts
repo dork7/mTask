@@ -102,7 +102,7 @@ describe('Done (AC8)', () => {
     const response = await post('/tasks/1/done?slot=bogus&priority=medium&sort=priority');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks?priority=medium&sort=priority#task-1');
+    expect(response.headers.location).toBe('/tasks?priority=medium&sort=priority&done=1#task-1');
     expect(stored(1)).toEqual({ ...before, status: 'done', completed_at: NOW, updated_at: NOW });
   });
 
@@ -113,7 +113,7 @@ describe('Done (AC8)', () => {
     const response = await post('/tasks/1/done');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks#task-1');
+    expect(response.headers.location).toBe('/tasks?done=1#task-1');
     expect(stored(1)).toEqual({ ...before, status: 'done', completed_at: NOW, updated_at: NOW });
   });
 
@@ -251,6 +251,6 @@ describe('unknown and draft tasks (AC14)', () => {
     const response = await post('/tasks/1/done?priority=%3Cb%3E&slot=night&sort=newest&sort=x');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks?slot=night#task-1');
+    expect(response.headers.location).toBe('/tasks?slot=night&done=1#task-1');
   });
 });

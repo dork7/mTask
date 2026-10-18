@@ -5,6 +5,7 @@ import { createSource, type Source, type SourceKind } from '../db/sources.ts';
 import { renderPage } from '../render.ts';
 import { analyzeSource, postedValue, type AnalysisOutcome } from '../services/drafts.ts';
 import { PhotoTypeError, createPhotoUpload, photoUrl, removePhoto } from '../services/photo-storage.ts';
+import type { RateLimiter } from '../services/rate-limit.ts';
 
 const NOT_A_PHOTO = 'That file is not a photo. Choose a JPEG, PNG, WebP or GIF image.';
 const TOO_LARGE = 'That photo is larger than 10 MB. Choose a smaller one.';
@@ -19,6 +20,9 @@ const NO_TEXT = 'Describe what you need to do first.';
 const TEXT_TOO_LONG = `That text is longer than ${MAX_TEXT_LENGTH} characters. Shorten it.`;
 const NO_TASKS_IN_TEXT = 'No tasks were found in that text.';
 const TEXT_NOT_ANALYZED = 'The text could not be analyzed.';
+
+/** The error of a request the AI rate limit refused. */
+export const TOO_MANY_REQUESTS = 'Too many requests. Wait a minute and try again.';
 
 /** A tab of the Add page. Each is named after the kind of source it makes. */
 type AddTab = SourceKind;
@@ -123,10 +127,39 @@ export function answerAnalysis(res: Response, source: Source, outcome: AnalysisO
 }
 
 /**
- * The Add screen with its three tabs, Photo, Voice and Type, the upload of the Photo tab
- * and the text posts of the other two. Each is analyzed before it is answered.
+ * Counts the request against the AI rate limit, and answers one that is refused with the
+ * Add page on this tab, status 429 and `Retry-After`, before anything is stored or
+ * analyzed. The text of a refused voice or text post stays in its text box. A body that
+ * has not been read is drained first: answering in the middle of an upload resets the
+ * connection of a large one.
  */
-export function createAddRouter(deps: AppDeps): Router {
+export function limitAnalysis(limiter: RateLimiter, tab: AddTab): RequestHandler {
+  return (req, res, next) => {
+    const wait = limiter.hit(req.ip ?? req.socket.remoteAddress ?? 'unknown');
+    if (wait === undefined) {
+      next();
+      return;
+    }
+
+    const answer = (): void => {
+      res.setHeader('Retry-After', String(wait));
+      renderAdd(res, 429, tab, { error: TOO_MANY_REQUESTS, text: tab === 'photo' ? '' : (readText(req.body) ?? '') });
+    };
+    if (req.readableEnded) {
+      answer();
+      return;
+    }
+    req.once('end', answer);
+    req.resume();
+  };
+}
+
+/**
+ * The Add screen with its three tabs, Photo, Voice and Type, the upload of the Photo tab
+ * and the text posts of the other two. Each is analyzed before it is answered, and all
+ * three count against the AI rate limit `limiter`.
+ */
+export function createAddRouter(deps: AppDeps, limiter: RateLimiter): Router {
   const router = Router();
   const upload = createPhotoUpload(deps.uploadsDir);
   // The two text forms post one flat field, so the simple parser is enough.
@@ -159,7 +192,7 @@ export function createAddRouter(deps: AppDeps): Router {
 
   // The upload middleware is called here, not mounted, so that every outcome it
   // reports is answered with the Add page.
-  router.post('/add/photo', (req, res, next) => {
+  router.post('/add/photo', limitAnalysis(limiter, 'photo'), (req, res, next) => {
     upload(req, res, (error: unknown) => {
       if (error instanceof PhotoTypeError) {
         renderAdd(res, 415, 'photo', { error: NOT_A_PHOTO });
@@ -201,8 +234,8 @@ export function createAddRouter(deps: AppDeps): Router {
     });
   });
 
-  router.post('/add/voice', form, postText('voice'));
-  router.post('/add/text', form, postText('text'));
+  router.post('/add/voice', form, limitAnalysis(limiter, 'voice'), postText('voice'));
+  router.post('/add/text', form, limitAnalysis(limiter, 'text'), postText('text'));
 
   return router;
 }

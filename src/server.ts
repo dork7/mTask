@@ -14,6 +14,7 @@ import { openDatabase } from './db/database.ts';
 import { createAnalyze } from './services/analyzer.ts';
 import { ensureFeedToken } from './services/calendar.ts';
 import { startDigestJob } from './services/digest.ts';
+import { startPhotoCleanup } from './services/photo-cleanup.ts';
 import { startPushJob, type PushSender } from './services/push.ts';
 import { startReminderJob } from './services/reminders.ts';
 import { startRecurrence } from './services/recurrence.ts';
@@ -24,14 +25,17 @@ const port = getPort();
 // The database is opened once, here, and handed down. When it cannot be opened the
 // process stops before it listens. The process ending closes it.
 const db = openDatabase(getDatabasePath());
+const uploadsDir = getUploadsDir();
 // The recurring job: once now and every 15 minutes. The process ending stops it.
 startRecurrence(db);
+// The cleanup of photos with no task: once now and every hour. The process ending stops it.
+startPhotoCleanup(db, uploadsDir);
 // The calendar feed's secret: made once, kept across restarts (021).
 ensureFeedToken(db);
 // Without a key the server still starts: the analyzer then refuses every photo.
 const analyze = createAnalyze(getAnthropicApiKey(), getAnthropicModel());
 const vapid = getVapidKeys();
-const app = createApp({ db, uploadsDir: getUploadsDir(), analyze, vapidPublicKey: vapid?.publicKey });
+const app = createApp({ db, uploadsDir, analyze, vapidPublicKey: vapid?.publicKey });
 
 /**
  * The real sender: `web-push` signs with the VAPID keys and encrypts the payload. Built

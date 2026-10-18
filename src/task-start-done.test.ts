@@ -193,7 +193,7 @@ describe('Done from the sheet (AC7)', () => {
     const response = await post('/tasks/1/done?priority=high');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks?priority=high#task-1');
+    expect(response.headers.location).toBe('/tasks?priority=high&done=1#task-1');
     expect(stored(1)?.actual_minutes).toBe(75);
   });
 
@@ -204,6 +204,6 @@ describe('Done from the sheet (AC7)', () => {
     const response = await post('/tasks/1/done?from=x&priority=high');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks?priority=high#task-1');
+    expect(response.headers.location).toBe('/tasks?priority=high&done=1#task-1');
   });
 });

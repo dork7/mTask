@@ -48,6 +48,35 @@ export function listSourceTasks(db: Database, sourceId: number): Task[] {
 }
 
 /**
+ * Deletes every photo source created before `before` (a stored timestamp) that no task
+ * names, and returns them in id order. One statement, so a task made in between cannot
+ * be left without its source.
+ */
+export function removeStalePhotoSources(db: Database, before: string): Source[] {
+  return db
+    .prepare(
+      `DELETE FROM sources
+        WHERE kind = 'photo' AND created_at < ?
+          AND NOT EXISTS (SELECT 1 FROM tasks WHERE tasks.source_id = sources.id)
+       RETURNING *`,
+    )
+    .all(before)
+    .map(toSource)
+    .sort((a, b) => a.id - b.id);
+}
+
+/** Every non-null `image_path` of sources and tasks. */
+export function listImagePaths(db: Database): string[] {
+  return db
+    .prepare(
+      `SELECT image_path FROM sources WHERE image_path IS NOT NULL
+       UNION SELECT image_path FROM tasks WHERE image_path IS NOT NULL`,
+    )
+    .all()
+    .map((row) => String(row.image_path));
+}
+
+/**
  * The driver's row, which has no prototype, as a plain object. The table is STRICT, so
  * each column holds the type `Source` declares; the compiler cannot see that.
  */

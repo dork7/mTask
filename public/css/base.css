@@ -605,6 +605,7 @@ h2 {
 
 /* A button on a toast follows the toast's colors, whatever its variant. */
 .toast .btn {
+  min-height: var(--touch-target);
   background: none;
   color: inherit;
   border-color: currentColor;
@@ -1653,6 +1654,15 @@ h2 {
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .skeleton__line {
     animation: none;
   }

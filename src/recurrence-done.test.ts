@@ -76,9 +76,9 @@ function post(address: string): request.Test {
 
 describe('completing makes the next one (AC4)', () => {
   it.each([
-    ['/tasks/1/done', '/tasks#task-1'],
+    ['/tasks/1/done', '/tasks?done=1#task-1'],
     ['/tasks/1/done?from=sheet', '/tasks/1'],
-    ['/overdue/1/done', '/overdue'],
+    ['/overdue/1/done', '/overdue?done=1'],
   ])('from %s: the task is done and its next instance placed', async (address, location) => {
     groceries();
     const [before] = rows();

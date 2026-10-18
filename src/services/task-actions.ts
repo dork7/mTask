@@ -122,17 +122,19 @@ export function startTask(db: Database, task: Task, now: Date): void {
 /**
  * Makes a task `done` at `now`. A task in progress with a start also gets the minutes
  * it ran, as `actual_minutes`; any other keeps its minutes. Its scheduled times are
- * left as they are. A task that is `done` already is not written.
+ * left as they are. A task that is `done` already is not written, and `undefined` is
+ * returned. Otherwise `next` is the instance a recurring task made, of which only the
+ * id is to be read: its times are those before it was placed.
  */
-export function markDone(db: Database, task: Task, now: Date): void {
-  if (task.status === 'done') return;
+export function markDone(db: Database, task: Task, now: Date): { next: Task | undefined } | undefined {
+  if (task.status === 'done') return undefined;
   const worked =
     task.status === 'in_progress' && task.started_at !== null
       ? { actual_minutes: workedMinutes(task.started_at, now) }
       : {};
-  inTransaction(db, () => {
+  return inTransaction(db, () => {
     updateTask(db, task.id, { status: 'done', completed_at: now.toISOString(), ...worked });
-    makeNextInstance(db, task, now);
+    return { next: makeNextInstance(db, task, now) };
   });
 }
 

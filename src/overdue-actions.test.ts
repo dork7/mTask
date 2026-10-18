@@ -103,7 +103,7 @@ describe('Mark done (AC5)', () => {
     const response = await post('/overdue/1/done');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/overdue');
+    expect(response.headers.location).toBe('/overdue?done=1');
     expect(listTasks(testApp.db)).toEqual([
       { ...before[0], status: 'done', completed_at: NOW, updated_at: NOW },
       before[1],

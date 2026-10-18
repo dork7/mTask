@@ -88,6 +88,11 @@ export function withQuery(path: string, list: ListQuery): string {
   return query === '' ? path : `${path}?${query}`;
 }
 
+/** An address with `name=id` added to its query, for the toast of the page it leads to. */
+export function withToastParam(address: string, name: 'deleted' | 'done', id: number): string {
+  return `${address}${address.includes('?') ? '&' : '?'}${name}=${id}`;
+}
+
 /** The query with this priority turned on when it is off, and off when it is on. */
 export function togglePriority(list: ListQuery, id: Priority): ListQuery {
   const on = list.priorities.includes(id);

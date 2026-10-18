@@ -3,7 +3,7 @@ import type { AppDeps } from '../app.ts';
 import type { Database } from '../db/database.ts';
 import { listTasks, type Task } from '../db/tasks.ts';
 import { dayTimeLabel } from '../dubai.ts';
-import { renderPage } from '../render.ts';
+import { renderPage, type PageToast } from '../render.ts';
 import { postedValue } from '../services/drafts.ts';
 import {
   OVERDUE_PATH,
@@ -13,9 +13,11 @@ import {
   readPickedStart,
   type OverdueGroupId,
 } from '../services/overdue.ts';
-import { markDone, moveTask, rescheduleTask } from '../services/task-actions.ts';
-import { LIST_PATH } from '../services/task-list.ts';
+import { moveTask, rescheduleTask } from '../services/task-actions.ts';
+import { LIST_PATH, withToastParam } from '../services/task-list.ts';
+import { DONE_TOAST, canUndoDone, doneWithUndo, undoDone, type UndoStore } from '../services/undo.ts';
 import type { Priority } from '../ui.ts';
+import { readId } from './review.ts';
 import { findListedTask } from './tasks.ts';
 
 const BAD_PICK = 'Pick a date and time that has not passed.';
@@ -68,8 +70,18 @@ function cardOf(task: Task, now: Date, refusal: Refusal | undefined): OverdueCar
   };
 }
 
-/** Renders the overdue view at `now`, with the message of a refused pick on its card. */
-function renderOverdue(res: Response, db: Database, now: Date, status = 200, refusal?: Refusal): void {
+/**
+ * Renders the overdue view at `now`, with the message of a refused pick on its card, and
+ * this toast in the layout's live region.
+ */
+function renderOverdue(
+  res: Response,
+  db: Database,
+  now: Date,
+  status = 200,
+  refusal?: Refusal,
+  toast: PageToast | null = null,
+): void {
   const groups = overdueGroups(listTasks(db), now).map(
     (group): GroupView => ({
       id: group.id,
@@ -78,22 +90,28 @@ function renderOverdue(res: Response, db: Database, now: Date, status = 200, ref
     }),
   );
   res.status(status);
-  renderPage(res, 'overdue', { title: 'Overdue', overdue: { groups, emptyHref: LIST_PATH } });
+  renderPage(res, 'overdue', { title: 'Overdue', toast, overdue: { groups, emptyHref: LIST_PATH } });
 }
 
 /**
- * The overdue view and what it does to one task: Mark done, Reschedule, and a move to a
- * picked time. An id that names no task, names a draft or is not written as an id falls
- * through to the app's not-found page. A task that is no longer overdue at the request
- * is not written. Every post that is not refused goes back to the view.
+ * The overdue view and what it does to one task: Mark done and its undo, Reschedule, and
+ * a move to a picked time. Mark done is kept in `undo`. An id that names no task, names a
+ * draft or is not written as an id falls through to the app's not-found page. A task
+ * that is no longer overdue at the request is not written. Every post that is not
+ * refused goes back to the view.
  */
-export function createOverdueRouter(deps: AppDeps): Router {
+export function createOverdueRouter(deps: AppDeps, undo: UndoStore): Router {
   const router = Router();
   // The pick form posts one flat field, so the simple parser is enough.
   const form = express.urlencoded({ extended: false });
 
-  router.get(OVERDUE_PATH, (_req, res) => {
-    renderOverdue(res, deps.db, new Date());
+  router.get(OVERDUE_PATH, (req, res) => {
+    const doneId = readId(req.query.done);
+    const toast =
+      doneId !== undefined && canUndoDone(deps.db, undo, doneId)
+        ? { message: DONE_TOAST, undoAction: `${OVERDUE_PATH}/${doneId}/undo-done` }
+        : null;
+    renderOverdue(res, deps.db, new Date(), 200, undefined, toast);
   });
 
   router.post(`${OVERDUE_PATH}/:taskId/done`, (req, res, next) => {
@@ -103,7 +121,17 @@ export function createOverdueRouter(deps: AppDeps): Router {
       return;
     }
     const now = new Date();
-    if (isOverdue(task, now)) markDone(deps.db, task, now);
+    const written = isOverdue(task, now) && doneWithUndo(deps.db, undo, task, now);
+    res.redirect(303, written ? withToastParam(OVERDUE_PATH, 'done', task.id) : OVERDUE_PATH);
+  });
+
+  // The id is read, not looked up as a listed task: the undo checks the task itself.
+  router.post(`${OVERDUE_PATH}/:taskId/undo-done`, (req, res, next) => {
+    const id = readId(req.params.taskId);
+    if (id === undefined || undoDone(deps.db, undo, id) === undefined) {
+      next();
+      return;
+    }
     res.redirect(303, OVERDUE_PATH);
   });
 

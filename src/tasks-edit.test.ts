@@ -299,7 +299,7 @@ describe('Delete (AC13)', () => {
     const response = await request(testApp.app).post('/tasks/1/delete?priority=medium');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks?priority=medium');
+    expect(response.headers.location).toBe('/tasks?priority=medium&deleted=1');
     expect(listTasks(testApp.db)).toEqual([before[1]]);
     expect(getSource(testApp.db, source.id)).toEqual(source);
   });
@@ -311,7 +311,7 @@ describe('Delete (AC13)', () => {
     const response = await request(testApp.app).post('/tasks/1/delete');
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('/tasks');
+    expect(response.headers.location).toBe('/tasks?deleted=1');
     expect(stored(1)).toBeUndefined();
   });
 

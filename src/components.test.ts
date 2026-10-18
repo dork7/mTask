@@ -434,14 +434,14 @@ describe.each([
 });
 
 describe('toast (AC6)', () => {
-  it('sits in a polite live region and holds its message', async () => {
+  it('brings no live region of its own and holds its message', async () => {
     const fragment = await renderPartial('toast', { message: 'Task saved' });
     const region = rootOf(fragment);
     const toast = one(fragment, '.toast');
 
     expect(region.getAttribute('class')).toBe('toast-region');
-    expect(region.getAttribute('aria-live')).toBe('polite');
-    expect(toast.closest('[aria-live="polite"]')).toBe(region);
+    expect(region.hasAttribute('aria-live')).toBe(false);
+    expect(all(fragment, '[aria-live]')).toEqual([]);
     expect(textOf(toast)).toBe('Task saved');
     expect(all(fragment, '.toast__actions')).toEqual([]);
   });
@@ -548,11 +548,12 @@ describe('GET /_styleguide (AC5, AC6)', () => {
     for (const dialog of dialogs) expect(dialogName(dialog, document)).not.toBe('');
   });
 
-  it('puts every toast in a live region', () => {
+  it('has the layout\'s live region as its only one, with the stage toast outside it', () => {
     const toasts = all(document, '.toast');
 
     expect(toasts.length).toBeGreaterThan(0);
-    for (const toast of toasts) expect(toast.closest('[aria-live]')).not.toBeNull();
+    expect(all(document, '[aria-live]')).toEqual([one(document, '#live-region')]);
+    for (const toast of toasts) expect(toast.closest('#live-region')).toBeNull();
   });
 
   it('gives no two elements the same id', () => {

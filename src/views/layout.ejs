@@ -33,6 +33,10 @@
   <main class="page">
     <%- include('pages/' + page) %>
   </main>
+  <div id="live-region" aria-live="polite"><% if (locals.toast) { %><%- include('partials/toast', { toast: {
+    message: locals.toast.message,
+    actions: include('partials/undo-button', { undoButton: { action: locals.toast.undoAction } }),
+  } }) %><% } %></div>
 <% if (locals.miniBar) { -%>
   <%- include('partials/mini-bar', { miniBar: locals.miniBar }) -%>
 <% } -%>
