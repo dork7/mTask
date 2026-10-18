@@ -102,34 +102,30 @@ Nothing else in the spec, the design or the plan was skipped.
 
 | Finding | What I did | What I saw fail |
 |---|---|---|
-| review-human.md: "merge main and resolve the conflicts" (CHANGES) | Not done. The builder's rules forbid merging, rebasing or switching branches (merges belong to the orchestrator). I previewed the merge without touching the branch, with `git merge-tree --write-tree --name-only main HEAD`: main has moved on with 016-recurring and 021-calendar-export, and four files conflict: `factory/backlog.md`, `src/app.ts`, `src/server.ts`, `src/server.test.ts`. No code changed this round. | Nothing to break; no behaviour changed. |
-
-To go ahead, the orchestrator (or the user) needs to either merge `main` into
-`factory/020-digest` and resolve those four files itself, or give the builder an explicit
-exception to the no-merge rule for this round.
+| review-human.md: "merge main and resolve the conflicts" (CHANGES) | The builder does not merge. I first previewed the merge with `git merge-tree` and reported the four conflicting files. The orchestrator then started `git merge --no-commit main` and resolved and staged `factory/backlog.md`. I resolved the other three by keeping both sides, since each hunk only added lines: `src/app.ts` imports and mounts both `createDigestRouter` and `createCalendarRouter`; `src/server.ts` imports `startDigestJob` and `ensureFeedToken` (main's `startRecurrence(db)` and `ensureFeedToken(db)` and 020's `startDigestJob(db, send)` were already auto-merged); `src/server.test.ts` mocks and unmocks `./services/digest.ts`, `./services/recurrence.ts` and `./services/calendar.ts`. I kept the imports in alphabetical order by path. The routes don't overlap (`/digest` and `/calendar.ics`, `/upcoming/ics`, `/task/:taskId/ics`, `/day/:date/ics`). I staged the three files. The orchestrator commits the merge. | Nothing broken on purpose: the resolution only puts both sides together. The server tests for both sides (020's `startDigestJob` wiring and order, main's `startRecurrence` and `ensureFeedToken` calls) ran and passed on the merged tree. |
 
 ### Test run
 
-`yarn build`:
+`yarn build` (merged tree):
 
 ```
 $ tsc --noEmit
-Done in 2.15s.
+Done in 1.57s.
 ```
 
-`yarn test`:
+`yarn test` (merged tree):
 
 ```
- Test Files  77 passed (77)
-      Tests  2064 passed (2064)
-Done in 4.47s.
+ Test Files  83 passed (83)
+      Tests  2191 passed (2191)
+Done in 4.24s.
 ```
 
 ```
 VERIFICATION
 Build: PASS
-Tests: PASS   (2064 passed, 0 failed)
+Tests: PASS   (2191 passed, 0 failed)
 Lint:  SKIPPED
 Diff:  PASS
-Verdict: READY (for the branch as it stands; the round 1 finding is still open, see above)
+Verdict: READY
 ```
